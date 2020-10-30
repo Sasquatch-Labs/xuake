@@ -27,22 +27,24 @@ Ain't no fancy build system here.  Just a plain ol' Makefile.  Build and
 install are:
 
 > `make`
+
 > `sudo make install`
 
 By default it just drops two executables (`xuake` and `xkterm`) into
 `/usr/local/bin`.
 
 You'll need to have these packages installed:
-> wlroots (== 0.11.0)
-> Wayland (>= 1.18)
-> OpenGL/EGL/GLESv2
-> Lua (>= 5.4.0)
-> libtsm
-> zlib
-> xcb
-> xkbcommon
-> libpng
-> pixman
+* wlroots (== 0.11.0)
+* Wayland (>= 1.18)
+* OpenGL/EGL/GLESv2
+* Lua (>= 5.4.0)
+* libtsm
+* zlib
+* xcb
+* xkbcommon
+* libpng
+* pixman
+
 Many are probably installed by default on your system.  If you are running a
 Debian derived system, you'll need to have dev packages for all of those.
 

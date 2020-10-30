@@ -93,7 +93,9 @@ usage(void)
         "  ls [workspace]: list views\n"
         "  focus <view_id>: focus view by id\n"
         "  close <view_id>: close view by id\n"
-        "  warp <view_id> <x>,<y>+<w>+<h>: move and resize view by id\n",
+        "  warp <view_id> <x>,<y>+<w>+<h>: move and resize view by id\n"
+        "  free: set free layout mode (default)\n"
+        "  mono: set monacle layout mode\n",
         XK_MAX_IMPULSE
     );
 }
