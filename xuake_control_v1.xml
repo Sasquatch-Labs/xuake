@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<protocol name="xuake_control_v1">
+    <copyright>
+    Copyright (c) 2020 Jeff Frasca
+
+    Permission is hereby granted, free of charge, to any person obtaining a copy
+    of this software and associated documentation files (the "Software"), to deal
+    in the Software without restriction, including without limitation the rights
+    to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+    copies of the Software, and to permit persons to whom the Software is
+    furnished to do so, subject to the following conditions:
+
+    The above copyright notice and this permission notice shall be included in all
+    copies or substantial portions of the Software.
+
+    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+    IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+    FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+    AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+    LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+    OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+    SOFTWARE.
+    </copyright>
+
+    <interface name="xuake_control" version="1">
+        <description summary="xuake control proto">
+        This is a protocol used by xuake to allow a client to send commands 
+        programmatically.
+        </description>
+        <request name="about">
+            <description summary="Get basic info about compositor">
+            Get short version info and blurb text from the compositor
+            Essentially a heavy-weight ping.
+            </description>
+        </request>
+        <event name="about_info">
+            <description summary="Response event for about request">
+            Sends short blurb with version info to the client.
+            </description>
+            <arg name="info" type="string" summary="about blurb" />
+        </event>
+        <request name="exit">
+            <description summary="Cause xuake to exit">
+            Request compositor terminates
+            </description>
+        </request>
+        <request name="impulse">
+            <description summary="Send impulse">
+            Trigger a Lua impulse*() function
+            </description>
+            <arg name="slot" type="uint" summary="impulse slot" />
+        </request>
+        <request name="list_views">
+            <description summary="Request list of windows">
+            Request the compositor to send a series of view_info events to client
+            which describe the current state of active, open views
+            </description>
+            <arg name="workspace" type="int" summary="workspace" />
+        </request>
+        <event name="view_info">
+            <description summary="information about a view">
+            Response to a list_views request.  One event per window.  Compositor indicates
+            it has finished sending the list by sending an event with type = 0 and view_id = 0
+            </description>
+            <arg name="view_id" type="int" summary="view id" />
+            <arg name="workspace" type="int" summary="workspace" />
+            <arg name="type" type="int" summary="xdg_shell or xwayland" />
+            <arg name="fullscreen" type="int" summary="is shell fullscreen" />
+            <arg name="output" type="int" summary="output view is on" />
+            <arg name="x" type="int" summary="x-coordinate" />
+            <arg name="y" type="int" summary="y-coordinate" />
+            <arg name="width" type="int" summary="view width" />
+            <arg name="height" type="int" summary="view height" />
+            <arg name="title" type="string" summary="view title" />
+        </event>
+        <request name="warp_view">
+            <description summary="Move/resize a view">
+            Move and resize a view.  x and y are mandatory.  width and height set to zero
+            means keep the same size.
+            </description>
+            <arg name="view_id" type="int" summary="view id" />
+            <arg name="x" type="int" summary="x coordinate" />
+            <arg name="y" type="int" summary="y coordinate" />
+            <arg name="width" type="int" summary="view width" />
+            <arg name="height" type="int" summary="view height" />
+        </request>
+        <request name="close_view">
+            <description summary="close view by id">
+            Requests compositor close a view by view id
+            </description>
+            <arg name="view_id" type="int" summary="view id" />
+        </request>
+        <request name="focus_view">
+            <description summary="focus view">
+            Requests compositor focus view by view id
+            </description>
+            <arg name="view_id" type="int" summary="view id" />
+        </request>
+        <request name="workspace">
+            <description summary="switch workspace">
+            Requests compositor switch workspaces
+            </description>
+            <arg name="workspace" type="int" summary="workspace" />
+        </request>
+        <request name="set_monacle">
+            <description summary="set monacle mode">
+            Requests compositor set monacle mode vs free mode
+            </description>
+            <arg name="mode" type="int" summary="monacle mode" />
+        </request>
+    </interface>
+</protocol>
