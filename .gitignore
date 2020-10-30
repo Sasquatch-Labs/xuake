@@ -1,0 +1,13 @@
+*.o
+*~
+
+xdg-shell-protocol.c
+xdg-shell-protocol.h
+xdg-shell-client-protocol.h
+xuake-control-client.h
+xuake-control-server.h
+xuake-control.c
+xk
+xkterm
+xuake
+wclip
