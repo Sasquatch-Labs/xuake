@@ -255,6 +255,7 @@ void close_view(struct xuake_server *server, struct xuake_view *view);
 struct xuake_view *get_view_by_id(struct xuake_server *server, int view_id);
 int get_ws_by_view_id(struct xuake_server *server, int view_id);
 int get_next_view_id(void);
+void xkutil_move_view(struct xuake_server *server, struct xuake_view *view, int new_ws);
 void xkutil_set_monacle(struct xuake_server *server, bool mono);
 void xkutil_focus_view(struct xuake_server *server, struct xuake_view *view, int ws);
 void xwayland_set_fullscreen(struct xuake_view *view, bool fullscreen);

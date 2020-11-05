@@ -10,6 +10,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <limits.h>
 #include "xkconfig.h"
 #include "xuake.h"
 #include "xklua.h"
@@ -74,6 +75,30 @@ xklua_get_view_geom(lua_State *l)
 */
 
 static int
+xklua_move_view(lua_State *l)
+{
+    int vid, isnum, ws;
+    struct xuake_view *view;
+
+    vid = lua_tointegerx(l, 1, &isnum);
+    if (!isnum)
+        return 0;
+
+    ws = lua_tointegerx(l, 2, &isnum);
+    if (!isnum)
+        return 0;
+
+    if (ws < 0 || ws >= XUAKE_WORKSPACES)
+        return 0;
+
+    view = get_view_by_id(server, vid);
+
+    xkutil_move_view(server, view, ws);
+
+    return 0;
+}
+
+static int
 xklua_focus_view(lua_State *l)
 {
     int vid, isnum, ws;
@@ -87,6 +112,8 @@ xklua_focus_view(lua_State *l)
     ws = get_ws_by_view_id(server, vid);
 
     xkutil_focus_view(server, view, ws);
+
+    return 0;
 }
 
 static int
@@ -132,6 +159,26 @@ xklua_warp_view(lua_State *l)
     }
 
     xkutil_warp_view(server, vid, x, y, w, h);
+
+    return 0;
+}
+
+static int
+xklua_resize_view(lua_State *l)
+{
+    int vid, w = 0, h = 0, isnum;
+
+    vid = lua_tointegerx(l, 1, &isnum);
+    if (!isnum)
+        return 0;
+    w = lua_tointegerx(l, 2, &isnum);
+    if (!isnum)
+        return 0;
+    h = lua_tointegerx(l, 3, &isnum);
+    if (!isnum)
+        return 0;
+
+    xkutil_warp_view(server, vid, INT_MIN, INT_MIN, w, h);
 
     return 0;
 }
@@ -432,6 +479,12 @@ xklua_load_impulse(char *filename)
 
     lua_pushcfunction(L, xklua_warp_view);
     lua_setglobal(L, "xk_warp_view");
+
+    lua_pushcfunction(L, xklua_resize_view);
+    lua_setglobal(L, "xk_resize_view");
+
+    lua_pushcfunction(L, xklua_move_view);
+    lua_setglobal(L, "xk_move_view");
 
     lua_pushcfunction(L, xklua_close_view);
     lua_setglobal(L, "xk_close_view");

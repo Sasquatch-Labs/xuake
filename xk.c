@@ -6,6 +6,7 @@
 #include <errno.h>
 #include <wayland-client.h>
 #include <wayland-client-protocol.h>
+#include <limits.h>
 
 #include "xuake-control-client.h"
 
@@ -135,7 +136,9 @@ run_warp(char **argv, int argc)
     if (errno || !view_id) return;
 
     S[0] = argv[2];
-    for (s = argv[2], i = 1; *s; s++) {
+    if (S[0][0] == '+')
+        S[0]++;
+    for (s = S[0], i = 1; *s; s++) {
         switch (*s) {
         case ',': case '+':
             *s = 0;
@@ -143,16 +146,26 @@ run_warp(char **argv, int argc)
             break;
         }
     }
-    x = strtol(S[0], NULL, 10);
-    if (errno) return;
-    y = strtol(S[1], NULL, 10);
-    if (errno) return;
-    if (i >= 3) {
-        w = strtol(S[2], NULL, 10);
+
+    if (argv[0][0] == 'w') {
+        x = strtol(S[0], NULL, 10);
         if (errno) return;
-        h = strtol(S[3], NULL, 10);
+        y = strtol(S[1], NULL, 10);
         if (errno) return;
-    }
+        if (i >= 3) {
+            w = strtol(S[2], NULL, 10);
+            if (errno) return;
+            h = strtol(S[3], NULL, 10);
+            if (errno) return;
+        }
+    } else if (argv[0][0] == 'r') {
+        w = strtol(S[0], NULL, 10);
+        if (errno) return;
+        h = strtol(S[1], NULL, 10);
+        if (errno) return;
+        y = x = INT_MIN;
+    } else
+        return;
 
     xuake_control_warp_view(xc, view_id, x, y, w, h);
 }
@@ -200,6 +213,13 @@ main(int argc, char **argv)
             int ws = strtol(argv[2], NULL, 10);
             if (!errno)
                 xuake_control_workspace(xc, ws);
+        } else if (!strcmp("mv", argv[1]) && argc == 4) {
+            int view_id = strtol(argv[2], NULL, 10);
+            if (!errno) {
+                int ws = strtol(argv[3], NULL, 10);
+                if (!errno)
+                    xuake_control_move_view(xc, view_id, ws);
+            }
         } else if (!strcmp("focus", argv[1]) && argc == 3) {
             int view_id = strtol(argv[2], NULL, 10);
             if (!errno && view_id)
@@ -210,6 +230,8 @@ main(int argc, char **argv)
                 xuake_control_impulse(xc, slot);
             }
         } else if (!strcmp("warp", argv[1]) && argc > 3) {
+            run_warp(&argv[1], argc - 1);
+        } else if (!strcmp("resize", argv[1]) && argc > 3) {
             run_warp(&argv[1], argc - 1);
         } else if (!strcmp("close", argv[1]) && argc > 2) {
             int view_id = strtol(argv[2], NULL, 10);

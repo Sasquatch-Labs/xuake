@@ -2,6 +2,25 @@
 #include "key.h"
 
 void
+xkutil_move_view(struct xuake_server *server, struct xuake_view *view, int new_ws)
+{
+    if (!view)
+        return;
+
+    if (new_ws > XUAKE_WORKSPACES)
+        return;
+
+    if (view->focused) {
+        view->focused = 0;
+        if (view->type == XUAKE_XWAYLAND_VIEW)
+            wlr_xwayland_surface_activate(view->xw_surface, false);
+        wlr_seat_keyboard_clear_focus(server->seat);
+    }
+    wl_list_remove(&view->link);
+    wl_list_insert(&server->workspaces[new_ws], &view->link);
+}
+
+void
 xkkey_win_next_ws(struct xuake_server *server)
 {
     struct xuake_view *top_view;
@@ -14,14 +33,8 @@ xkkey_win_next_ws(struct xuake_server *server)
     if (ws > XUAKE_WORKSPACES)
         ws = 0;
     top_view = wl_container_of(server->workspaces[server->ws].next, top_view, link);
-    if (top_view->focused) {
-        top_view->focused = 0;
-        if (top_view->type == XUAKE_XWAYLAND_VIEW)
-            wlr_xwayland_surface_activate(top_view->xw_surface, false);
-        wlr_seat_keyboard_clear_focus(server->seat);
-    }
-    wl_list_remove(&top_view->link);
-    wl_list_insert(&server->workspaces[ws], &top_view->link);
+
+    xkutil_move_view(server, top_view, ws);
 }
 
 void
@@ -37,14 +50,8 @@ xkkey_win_prev_ws(struct xuake_server *server)
     if (ws < 0)
         ws = XUAKE_WORKSPACES - 1;
     top_view = wl_container_of(server->workspaces[server->ws].next, top_view, link);
-    if (top_view->focused) {
-        top_view->focused = 0;
-        if (top_view->type == XUAKE_XWAYLAND_VIEW)
-            wlr_xwayland_surface_activate(top_view->xw_surface, false);
-        wlr_seat_keyboard_clear_focus(server->seat);
-    }
-    wl_list_remove(&top_view->link);
-    wl_list_insert(&server->workspaces[ws], &top_view->link);
+
+    xkutil_move_view(server, top_view, ws);
 }
 
 void

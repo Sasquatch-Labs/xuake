@@ -84,6 +84,13 @@
             <arg name="width" type="int" summary="view width" />
             <arg name="height" type="int" summary="view height" />
         </request>
+        <request name="move_view">
+            <description summary="move view to a different workspace">
+            Requests compositor move a view to a different workspace
+            </description>
+            <arg name="view_id" type="int" summary="view id" />
+            <arg name="workspace" type="int" summary="workspace" />
+        </request>
         <request name="close_view">
             <description summary="close view by id">
             Requests compositor close a view by view id

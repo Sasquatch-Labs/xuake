@@ -1,5 +1,6 @@
 #include "xuake.h"
 #include "xklua.h"
+#include "limits.h"
 
 void
 focus_view(struct xuake_view *view, struct wlr_surface *surface)
@@ -272,8 +273,10 @@ xkutil_warp_view(struct xuake_server *server, int view_id, int x, int y, int wid
     if (!view)
         return;
 
-    view->x = x;
-    view->y = y;
+    if (x > INT_MIN && y > INT_MIN) {
+        view->x = x;
+        view->y = y;
+    }
 
     if (width == 0 || height == 0) {
         switch (view->type) {

@@ -189,6 +189,17 @@ handle_xuake_control_warp_view(struct wl_client *client, struct wl_resource *res
 }
 
 void
+handle_xuake_control_move_view(struct wl_client *client, struct wl_resource *resource, int32_t view_id, int32_t ws)
+{
+    struct xuake_server *server = resource->data;
+
+    if (ws > XUAKE_WORKSPACES)
+        return;
+
+    xkutil_move_view(server, get_view_by_id(server, view_id), ws);
+}
+
+void
 handle_xuake_control_close_view(struct wl_client *client, struct wl_resource *resource, int32_t view_id)
 {
     struct xuake_server *server = resource->data;
@@ -260,6 +271,7 @@ static struct xuake_control_interface xuake_control_impl = {
     .impulse = handle_xuake_control_impulse,
     .list_views = handle_xuake_control_list_views,
     .warp_view = handle_xuake_control_warp_view,
+    .move_view = handle_xuake_control_move_view,
     .close_view = handle_xuake_control_close_view,
     .focus_view = handle_xuake_control_focus_view,
     .workspace = handle_xuake_control_workspace,

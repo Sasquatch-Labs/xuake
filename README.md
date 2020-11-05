@@ -124,8 +124,11 @@ support).
 - Rich library of commands/functions for Lua
 - xdg positioner handling
 - Xwayland: unmanaged windows aren't handled very well
-- Separate resize command from warp (leaves window at its location)
 - bind key to send different keypress -- Probably want to do this via impulse that calls an `xk_send_key` function
+
+### Completed 0.3.0:
+
+- Separate resize command from warp (leaves window at its location)
 
 ### Completed 0.2.0:
 
