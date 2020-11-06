@@ -108,7 +108,7 @@ usage(void)
     );
 }
 
-void
+int
 run_ls(char **argv, int argc)
 {
     int ws = -1;
@@ -117,23 +117,25 @@ run_ls(char **argv, int argc)
         ws = strtol(argv[1], NULL, 10);
         if (errno) {
             usage();
-            return;
+            return 1;
         }
     } else if (argc > 2) {
         usage();
-        return;
+        return 1;
     }
     xuake_control_list_views(xc, ws);
     printf("VIEW  WS  T  %-24sTITLE\n", " GEOMETRY");
+
+    return 0;
 }
 
-void
+int
 run_warp(char **argv, int argc)
 {
     char *s, *S[4];
     int i, x, y, w = 0, h = 0;
     int view_id = strtol(argv[1], NULL, 10);
-    if (errno || !view_id) return;
+    if (errno || !view_id) return 1;
 
     S[0] = argv[2];
     if (S[0][0] == '+')
@@ -149,31 +151,32 @@ run_warp(char **argv, int argc)
 
     if (argv[0][0] == 'w') {
         x = strtol(S[0], NULL, 10);
-        if (errno) return;
+        if (errno) return 1;
         y = strtol(S[1], NULL, 10);
-        if (errno) return;
+        if (errno) return 1;
         if (i >= 3) {
             w = strtol(S[2], NULL, 10);
-            if (errno) return;
+            if (errno) return 1;
             h = strtol(S[3], NULL, 10);
-            if (errno) return;
+            if (errno) return 1;
         }
     } else if (argv[0][0] == 'r') {
         w = strtol(S[0], NULL, 10);
-        if (errno) return;
+        if (errno) return 1;
         h = strtol(S[1], NULL, 10);
-        if (errno) return;
+        if (errno) return 1;
         y = x = INT_MIN;
     } else
-        return;
+        return 1;
 
     xuake_control_warp_view(xc, view_id, x, y, w, h);
+    return 0;
 }
 
 int
 main(int argc, char **argv)
 {
-    int i;
+    int i, exit_code = 0;
     bool forever = false;
 
     display = wl_display_connect(NULL);
@@ -194,7 +197,9 @@ main(int argc, char **argv)
         return 1;
     }
 
-    // XXX: this could be a lot better.
+    // XXX: At some point, getopt style flags will likely be wanted
+    // Current thinking is to push that into functions like run_ls()
+    // and run_warp(), hence, passing a shifted argv and argc to those
     if (xc && argc > 1) {
         if (!strcmp("about", argv[1])) {
             xuake_control_about(xc);
@@ -207,7 +212,7 @@ main(int argc, char **argv)
         } else if (!strcmp("mono", argv[1])) {
             xuake_control_set_monacle(xc, 1);
         } else if (!strcmp("ls", argv[1])) {
-            run_ls(&argv[1], argc - 1);
+            exit_code = run_ls(&argv[1], argc - 1);
             forever = true;
         } else if (!strcmp("ws", argv[1]) && argc == 3) {
             int ws = strtol(argv[2], NULL, 10);
@@ -219,25 +224,32 @@ main(int argc, char **argv)
                 int ws = strtol(argv[3], NULL, 10);
                 if (!errno)
                     xuake_control_move_view(xc, view_id, ws);
-            }
+                else
+                    exit_code = 1;
+            } else
+                exit_code = 1;
         } else if (!strcmp("focus", argv[1]) && argc == 3) {
             int view_id = strtol(argv[2], NULL, 10);
             if (!errno && view_id)
                 xuake_control_focus_view(xc, view_id);
+            else
+                exit_code = 1;
         } else if (!strcmp("impulse", argv[1]) && argc > 2) {
             uint32_t slot = strtol(argv[2], NULL, 10);
             if (!errno && slot <= XK_MAX_IMPULSE) {
                 xuake_control_impulse(xc, slot);
-            }
+            } else
+                exit_code = 1;
         } else if (!strcmp("warp", argv[1]) && argc > 3) {
-            run_warp(&argv[1], argc - 1);
+            exit_code = run_warp(&argv[1], argc - 1);
         } else if (!strcmp("resize", argv[1]) && argc > 3) {
-            run_warp(&argv[1], argc - 1);
+            exit_code = run_warp(&argv[1], argc - 1);
         } else if (!strcmp("close", argv[1]) && argc > 2) {
             int view_id = strtol(argv[2], NULL, 10);
-            if (errno || !view_id)
-                exit(1);
-            xuake_control_close_view(xc, view_id);
+            if (!errno && view_id)
+                xuake_control_close_view(xc, view_id);
+            else
+                exit_code = 1;
         } else if (!strcmp("version", argv[1])) {
             printf("xk version %s\n", XUAKE_VERSION);
         } else if (!strcmp("help", argv[1])) {
@@ -253,5 +265,5 @@ main(int argc, char **argv)
 
     wl_display_disconnect(display);
 
-    return 0;
+    return exit_code;
 }
