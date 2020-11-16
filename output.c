@@ -155,8 +155,7 @@ render_surface(struct wlr_surface *surface, int sx, int sy, void *data)
      * output-local coordinates, or (2000 - 1920). */
     double ox = 0, oy = 0;
     wlr_output_layout_output_coords(view->server->output_layout, output, &ox, &oy);
-    if (!view->fullscreen)
-        ox += view->x + sx, oy += view->y + sy;
+    ox += view->x + sx, oy += view->y + sy;
 
     /* We also have to apply the scale factor for HiDPI outputs. This is only
      * part of the puzzle, Xuake does not support HiDPI. */
