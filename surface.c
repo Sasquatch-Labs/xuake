@@ -425,6 +425,19 @@ xdg_surface_destroy(struct wl_listener *listener, void *data)
     free(view);
 }
 
+static void
+xdg_new_popup(struct wl_listener *listener, void *data)
+{
+    struct wlr_xdg_popup *popup = data;
+    struct wlr_box box;
+
+    printf("Creating popup!\n");
+
+    wlr_surface_get_extends(popup->parent, &box);
+
+    wlr_xdg_popup_unconstrain_from_box(popup, &box);
+}
+
 void
 xkutil_set_monacle(struct xuake_server *server, bool mono)
 {
@@ -549,9 +562,13 @@ server_new_xdg_surface(struct wl_listener *listener, void *data)
     view->destroy.notify = xdg_surface_destroy;
     wl_signal_add(&xdg_surface->events.destroy, &view->destroy);
 
+    view->new_popup.notify = xdg_new_popup;
+    wl_signal_add(&xdg_surface->events.new_popup, &view->new_popup);
+
     /* cotd */
     struct wlr_xdg_toplevel *toplevel;
     if (xdg_surface->role == WLR_XDG_SURFACE_ROLE_TOPLEVEL) {
+        printf("Creating top level!\n");
         toplevel = xdg_surface->toplevel;
         view->request_move.notify = xdg_toplevel_request_move;
         wl_signal_add(&toplevel->events.request_move, &view->request_move);

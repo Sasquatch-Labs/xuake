@@ -122,13 +122,14 @@ support).
 - screen capture protocol
 - Rich globals for Lua
 - Rich library of commands/functions for Lua
-- xdg positioner handling
 - Xwayland: unmanaged windows aren't handled very well
 - bind key to send different keypress -- Probably want to do this via impulse that calls an `xk_send_key` function
 
 ### Completed 0.3.0:
 
 - Separate resize command from warp (leaves window at its location)
+- Bug: Full screen on multiple outputs snapped all windows to 0,0
+- xdg positioner handling
 
 ### Completed 0.2.0:
 
@@ -166,6 +167,8 @@ support).
 - virtual keyboards
 - keyboard re-mapping
 - font cache tree rebalancing
+- Monocle mode with multiple outputs - cannot move windows between outputs
+- 16x8 font rendering bugs
 
 ## What's with the name?
 
