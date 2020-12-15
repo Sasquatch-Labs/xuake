@@ -26,7 +26,7 @@
 #include <wlr/types/wlr_gtk_primary_selection.h>
 #include <wlr/util/log.h>
 #include <xkbcommon/xkbcommon.h>
-#include <libtsm.h>
+//#include <libtsm.h>
 
 #include "xuake-control-server.h"
 

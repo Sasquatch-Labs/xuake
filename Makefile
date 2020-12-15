@@ -50,7 +50,6 @@ XKTERM_LIBS= \
     $(shell pkg-config --libs glesv2) \
     $(shell pkg-config --libs libpng) \
     $(shell pkg-config --libs zlib) \
-    $(shell pkg-config --libs libtsm) \
     $(shell pkg-config --libs xkbcommon) \
     $(shell pkg-config --libs lua)
 
@@ -85,7 +84,7 @@ xktlua.o: lua.c
 xuake: xuake-control-server.h $(XUAKE_OBJFILES)
 	$(CC) $(CFLAGS) -o $@ $(XUAKE_OBJFILES) $(XUAKE_LIBS)
 
-xkterm: xdg-shell-client-protocol.h $(XKTERM_OBJFILES)
+xkterm: xdg-shell-client-protocol.h xuake-control-client.h xuake-control-server.h $(XKTERM_OBJFILES)
 	$(CC) $(CFLAGS) -o $@ $(XKTERM_OBJFILES) $(XKTERM_LIBS) 
 
 xk: xuake-control-client.h $(XK_OBJFILES)

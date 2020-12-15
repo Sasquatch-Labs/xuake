@@ -19,7 +19,6 @@
 #include <GLES2/gl2.h>
 #include <GL/gl.h>
 #include <xkbcommon/xkbcommon.h>
-#include <libtsm.h>
 #include "xdg-shell-client-protocol.h"
 #include "ft.h"
 #include "term.h"
@@ -168,7 +167,7 @@ redraw(void *data, struct wl_callback *callback, uint32_t time)
 
     //printf("%p, %p, %d\n", data, callback, time);
     wl_surface_damage(surface, 0, 0, width, height);
-    xkterm_render(&xkt, xkt.width, xkt.height, xkt.data);
+    xkterm_render(&xkt, xkt.pixw, xkt.pixh, xkt.data);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_BGRA, width, height, 0, GL_BGRA, GL_UNSIGNED_BYTE, (void *)xkt.data);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
@@ -232,13 +231,13 @@ xdg_toplevel_handle_configure(void *data, struct xdg_toplevel *xdg_toplevel, int
     //oldh = height;
     //printf("got configure: [%d, %d]\n", w, h);
 
-    xkt.width = width = w;
-    xkt.height = height = h;
+    xkt.pixw = width = w;
+    xkt.pixh = height = h;
     if (xkt.data)
         free(xkt.data);
     xkt.data = malloc(width*height*XUAKE_PIXEL_BYTES*sizeof(unsigned char));
     xkterm_resize(&xkt, w, h);
-    xkterm_clear_full(&xkt, xkt.width, xkt.height, xkt.data);
+    xkterm_clear_full(&xkt, xkt.pixw, xkt.pixh, xkt.data);
 
     wl_egl_window_resize(egl_window, width, height, 0, 0);
 
@@ -473,8 +472,11 @@ init_xkterm(void)
     pid_t p;
     size_t dirtysz;
 
-    xkt.width = width;
-    xkt.height = height;
+    xkt.pixw = width;
+    xkt.pixh = height;
+    xkt.cellw = width/xkt.conf->xkt.cell_width;
+    xkt.cellh = height/xkt.conf->xkt.cell_height;
+    xkt.vte.ncells = xkt.cellw*xkt.cellh;
     xkt.data = malloc(width*height*XUAKE_PIXEL_BYTES*sizeof(unsigned char));
     xkt.texture = NULL;
     if (!xkt.data) {
@@ -501,17 +503,28 @@ init_xkterm(void)
     xkt.child = p;
 
     //xkterm_use_full_clear();
+    xkt.vte.cells = malloc(xkt.vte.ncells*sizeof(struct xkt_cell));
+    xkt.vte.rows = malloc(xkt.cellh*sizeof(struct xkt_cell *));
+    for (i = 0; i < xkt.vte.ncells; i++) {
+        xkt.vte.cells[i].rune = 0x20;
+        xkt.vte.cells[i].dirty = false;
+    }
+    for (i = 0; i < xkt.cellh; i++)
+        xkt.vte.rows[i] = &xkt.vte.cells[i*xkt.cellw];
+    xkt.vte.cx = 0;
+    xkt.vte.cy = 0;
+    xkt.vte.state = 0;
 
-    tsm_screen_new(&xkt.tsm_screen, NULL, NULL);
-    tsm_screen_set_max_sb(xkt.tsm_screen, 4096);
-    tsm_screen_resize(xkt.tsm_screen, width/xkt.conf->xkt.cell_width, height/xkt.conf->xkt.cell_height);
-    dirtysz = (width/xkt.conf->xkt.cell_width)*(height/xkt.conf->xkt.cell_height)*sizeof(bool);
+    //tsm_screen_new(&xkt.tsm_screen, NULL, NULL);
+    //tsm_screen_set_max_sb(xkt.tsm_screen, 4096);
+    //tsm_screen_resize(xkt.tsm_screen, width/xkt.conf->xkt.cell_width, height/xkt.conf->xkt.cell_height);
+    dirtysz = (xkt.cellw)*(xkt.cellh)*sizeof(bool);
     xkt.cell_dirty = malloc(dirtysz);
     memset(xkt.cell_dirty, 0, dirtysz);
 
-    tsm_vte_new(&xkt.vte, xkt.tsm_screen, xkt_vte_write_cb, &xkt, NULL, NULL);
+    //tsm_vte_new(&xkt.vte, xkt.tsm_screen, xkt_vte_write_cb, &xkt, NULL, NULL);
 
-    xkterm_clear_full(&xkt, xkt.width, xkt.height, xkt.data);
+    xkterm_clear_full(&xkt, xkt.pixw, xkt.pixh, xkt.data);
 }
 
 static void
@@ -700,7 +713,7 @@ main(int argc, char **argv)
         return 1;
     }
 
-    xkterm_render(&xkt, xkt.width, xkt.height, xkt.data);
+    xkterm_render(&xkt, xkt.pixw, xkt.pixh, xkt.data);
 
     wl_display_roundtrip(display);
 

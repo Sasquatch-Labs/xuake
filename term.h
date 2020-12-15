@@ -24,16 +24,39 @@
 #define XKT_FGCOLOR 16
 #define XKT_BGCOLOR 17
 
+#define XKT_PBUF_SZ 32
+#define XKT_NPAR 16
+
+struct xkt_cell {
+    uint32_t rune;
+    bool dirty;
+    // XXX: Add colors and attributes
+};
+
+struct xkt_vte {
+    unsigned int state;
+    bool qmark;
+    unsigned int n;
+    unsigned int param[XKT_NPAR];
+    char *p;
+    char pbuf[XKT_PBUF_SZ];
+    int ncells;
+    struct xkt_cell *cells;
+    struct xkt_cell **rows;
+    int cx, cy;
+};
+
 struct xkterm {
     int pty;
     int apty;
     pid_t child;
-    uint32_t width;
-    uint32_t height;
+    uint32_t pixw;
+    uint32_t pixh;
+    uint32_t cellw;
+    uint32_t cellh;
     unsigned char *data;
     struct wlr_texture *texture;
-    struct tsm_screen *tsm_screen;
-    struct tsm_vte *vte;
+    struct xkt_vte vte;
     bool *cell_dirty;
     struct xkconfig *conf;
 };
@@ -43,7 +66,7 @@ exec_startcmd(char *cmd);
 
 pid_t xkterm_forkpty(struct xkterm *t);
 void xkterm_resize(struct xkterm *t, uint32_t w, uint32_t h);
-void xkt_vte_write_cb(struct tsm_vte *vte, const char *u8, size_t len, void *data);
+//void xkt_vte_write_cb(struct tsm_vte *vte, const char *u8, size_t len, void *data);
 void xkterm_key_input(struct xkterm *t, xkb_keysym_t sym, uint32_t modifiers);
 bool xkterm_check(struct xkterm *t);
 void xkterm_clear_dirty(struct xkterm *t, int width, int height, unsigned char *data);
