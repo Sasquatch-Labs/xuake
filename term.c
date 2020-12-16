@@ -22,8 +22,10 @@ enum xkt_modifier {
 enum xkt_vte_state {
     XKT_ST_DEF = 0,
     XKT_ST_ESC = 1,
-    XKT_ST_CSI = 2,
-    XKT_ST_IGN = 3
+    XKT_ST_CSIP = 2,
+    XKT_ST_CSI = 3,
+    XKT_ST_IGN = 4,
+    XKT_ST_OSC = 5
 };
 
 static uint32_t colors[18] = {
@@ -118,15 +120,9 @@ xkterm_key_input(struct xkterm *t, xkb_keysym_t sym, uint32_t modifiers)
 
     if (modifiers == 0 || modifiers == XKT_MODIFIER_SHIFT) {
         char sb[2];
-        //if (ucs4 == '\n')
-        //    printf("got newline!\n");
-        //else
-        if (ucs4 == '\r') {
-            //printf("got return!\n");
-            ucs4 = '\n';
-        }
         if ((ucs4 < 127 && ucs4 >= ' ')
             || ucs4 == '\n'
+            || ucs4 == '\r'
             || ucs4 == 0x1b
             || ucs4 == '\b') {
             sb[0] = ucs4 & 0x7f;
@@ -365,10 +361,91 @@ xkt_vte_clearline(struct xkterm *t, int row)
 }
 
 void
+xkt_vte_partial_clearline(struct xkterm *t, int row, int col)
+{
+    int i;
+
+    for (i = 0; i <= col; i++) {
+        t->vte.rows[row][i].rune = 0x20;
+        t->vte.rows[row][i].dirty = true;
+    }
+}
+
+void
+xkt_vte_clearline_from(struct xkterm *t, int row, int col)
+{
+    int i;
+
+    for (i = col; i < t->cellw; i++) {
+        t->vte.rows[row][i].rune = 0x20;
+        t->vte.rows[row][i].dirty = true;
+    }
+}
+
+void
+xkt_vte_erasedisplay(struct xkterm *t, int type)
+{
+    int i;
+
+    switch (type) {
+    case 1: // handled below.
+        break;
+    case 2:
+    case 3: // no scrollback, same as 2
+    fullclear:
+        xkt_vte_clear(t);
+        t->vte.cx = 0;
+        t->vte.cy = 0;
+        return;
+    default:
+        return;
+    }
+
+    if (t->vte.cy < 0)
+        return;
+    if (t->vte.cy >= t->cellh)
+        goto fullclear;
+
+    for (i = 0; i < t->vte.cy; i++)
+        xkt_vte_clearline(t, i);
+
+    if (t->vte.cx < 0)
+        return;
+
+    if (t->vte.cx >= t->cellw) {
+        xkt_vte_clearline(t, t->vte.cy);
+        return;
+    }
+
+    xkt_vte_partial_clearline(t, t->vte.cy, t->vte.cx);
+}
+
+void
+xkt_vte_insert_line(struct xkterm *t, int line, int bot)
+{
+    struct xkt_cell *tmp;
+    int i;
+
+    if (bot > t->vte.wbot
+        || line < t->vte.wtop
+        || line >= bot)
+        return;
+
+    xkt_vte_clearline(t, bot);
+    tmp = t->vte.rows[bot];
+    // XXX: mark everything dirty.
+    for (i = bot; i > line; i--)
+        t->vte.rows[i] = t->vte.rows[i-1];
+    t->vte.rows[line] = tmp;
+}
+
+void
 xkt_vte_wrap(struct xkterm *t, int lines)
 {
     struct xkt_cell *tmp;
-    int i, j;
+    int i;
+
+    printf("  WRAP: %d\n");
 
     if (lines > t->cellh) {
         xkt_vte_clear(t);
@@ -376,12 +453,30 @@ xkt_vte_wrap(struct xkterm *t, int lines)
     }
 
     while (lines--) {
-        xkt_vte_clearline(t, 0);
-        tmp = t->vte.rows[0];
+        xkt_vte_clearline(t, t->vte.wtop);
+        tmp = t->vte.rows[t->vte.wtop];
         // XXX: mark everything dirty.
-        for (i = 0; i < t->cellh - 1; i++)
+        for (i = 0; i < t->vte.wbot; i++)
             t->vte.rows[i] = t->vte.rows[i+1];
-        t->vte.rows[t->cellh-1] = tmp;
+        t->vte.rows[t->vte.wbot] = tmp;
+    }
+}
+
+void
+xkt_vte_checkwrap(struct xkterm *t)
+{
+    if (t->vte.cx >= t->cellw - 1) {
+        t->vte.cx = 0;
+        t->vte.cy++;
+    } else if (t->vte.cx < 0) {
+        t->vte.cx = 0;
+    }
+
+    if (t->vte.cy > t->vte.wbot) {
+        xkt_vte_wrap(t, t->vte.cy - t->vte.wbot);
+        t->vte.cy = t->vte.wbot;
+    } else if (t->vte.cy < 0) {
+        t->vte.cy = 0;
     }
 }
 
@@ -424,41 +519,128 @@ xkt_vte_in_csi(struct xkterm *t, uint32_t ucs4)
 
     switch (ucs4) {
     case '@': // Ins Blank Characters
+        break;
     case 'A': // Cursor up
+        if (t->vte.n > 1) break;
+        if (t->vte.param[0] == 0) t->vte.param[0]++;
+        t->vte.cy -= t->vte.param[0];
+        break;
     case 'B': // Cursor down
+    case 'e': // move cursor down n rows
+        if (t->vte.n > 1) break;
+        if (t->vte.param[0] == 0) t->vte.param[0]++;
+        t->vte.cy += t->vte.param[0];
+        break;
     case 'C': // Cursor right
+    case 'a': // move the cursor right by n col
+        if (t->vte.n > 1) break;
+        if (t->vte.param[0] == 0) t->vte.param[0]++;
+        t->vte.cx += t->vte.param[0];
+        break;
     case 'D': // Cursor left
+        if (t->vte.n > 1) break;
+        if (t->vte.param[0] == 0) t->vte.param[0]++;
+        t->vte.cx -= t->vte.param[0];
+        break;
     case 'E': // Cursor down n rows, to col 1
+        if (t->vte.n > 1) break;
+        if (t->vte.param[0] == 0) t->vte.param[0]++;
+        t->vte.cx = 0;
+        t->vte.cy += t->vte.param[0];
+        break;
     case 'F': // Cursor up n rows, to col 1
+        if (t->vte.n > 1) break;
+        if (t->vte.param[0] == 0) t->vte.param[0]++;
+        t->vte.cx = 0;
+        t->vte.cy -= t->vte.param[0];
+        break;
     case 'G': // Cursor to indicated column in cur row
+    case 'd': // move cursor to indicated row, cur col
+        if (t->vte.n > 1) break;
+        if (t->vte.param[0] > 0) t->vte.param[0]--;
+        t->vte.cx = t->vte.param[0];
+        break;
     case 'H': // Cursor to row;col
+    case 'f': // move cursor to indicate row;col
+        if (t->vte.n > 2) break;
+        if (t->vte.param[0] > 0) t->vte.param[0]--;
+        if (t->vte.param[1] > 0) t->vte.param[1]--;
+        t->vte.cy = t->vte.param[0];
+        t->vte.cx = t->vte.param[1];
+        break;
     case 'J': // Erase display
+        if (t->vte.n == 1)
+            xkt_vte_erasedisplay(t, t->vte.param[0]);
+        else  if (t->vte.n == 0)
+            xkt_vte_erasedisplay(t, 0);
+        break;
     case 'K': // Erase line
+        if (t->vte.n == 1 && t->vte.param[0] == 1) {
+            if (t->vte.cx >= t->cellw) {
+                xkt_vte_clearline(t, t->vte.cy);
+            } else if (t->vte.cx < 0) {
+                break;
+            } else {
+                xkt_vte_partial_clearline(t, t->vte.cy, t->vte.cx);
+            }
+        } else if (t->vte.n == 1 && t->vte.param[0] == 2) {
+            xkt_vte_clearline(t, t->vte.cy);
+        } else if (t->vte.n == 0) {
+            xkt_vte_clearline_from(t, t->vte.cy, t->vte.cx);
+        }
+        break;
     case 'L': // Insert blank lines
+        if (t->vte.n == 0) { // XXX incomplete
+            xkt_vte_insert_line(t, t->vte.cy, t->vte.wbot);
+        }
+        break;
     case 'M': // delete lines
     case 'P': // delete chars from line
     case 'X': // erase chars from line
-    case 'a': // move the cursor right by n col
+        break;
     case 'c': // Answer I am a VT102
-    case 'd': // move cursor to indicated row, cur col
-    case 'e': // move cursor down n rows
-    case 'f': // move cursor to indicate row;col
+        write(t->pty, "\x1b[?6c", 5);
+        break;
     case 'g': // clear tab stop
+        break;
     case 'h': // set mode
     case 'l': // reset mode
     case 'm': // set attributes
+        break;
     case 'n': // status
+        if (t->vte.n == 1 && t->vte.param[0] == 5) {
+            write(t->pty, "\x1b[0n", 4);
+        } else if (t->vte.n == 1 && t->vte.param[0] == 6) {
+            char buf[XKT_PBUF_SZ];
+            int sz;
+            sz = snprintf(buf, XKT_PBUF_SZ, "\x1b[%d;%dR", t->vte.cy+1, t->vte.cx+1);
+            if (sz >= XKT_PBUF_SZ)
+                break;
+            write(t->pty, buf, sz);
+        }
+        break;
     case 'q': // set leds
     case 'r': // set scrolling region
+        if (t->vte.n > 2) break;
+        if (t->vte.param[0]) t->vte.param[0]--;
+        if (t->vte.param[1]) t->vte.param[1]--;
+        if (t->vte.param[0] >= t->cellh
+            || t->vte.param[1] >= t->cellh
+            || t->vte.param[0] >= t->vte.param[1])
+            break;
+        t->vte.wtop = t->vte.param[0];
+        t->vte.wbot = t->vte.param[1];
     case 's': // save cursor location
     case 'u': // restore cursor location
     case '`': // move cursor to col in current row
-        printf("  CSI-%c [", (char)ucs4, t->vte.n);
-        for (i = 0; i < t->vte.n; i++)
-            printf("%d ", t->vte.param[i]);
-        printf("]\n");
         break;
+    default:
+        return;
     }
+    printf("  CSI-%c [", (char)ucs4, t->vte.n);
+    for (i = 0; i < t->vte.n; i++)
+        printf("%d ", t->vte.param[i]);
+    printf("]\n");
 
     t->vte.state = XKT_ST_DEF;
 }
@@ -478,21 +660,26 @@ xkt_vte_in_escape(struct xkterm *t, uint32_t ucs4)
     case '%': case '#': case '(': case ')':
         // Ignore alignment command and character set commands.  UTF-8 or GTFO.
         t->vte.state = XKT_ST_IGN;
+        t->vte.n = 1;
         break;
     case 'c': // XXX: RESET
     case 'D': // XXX: Linefeed
     case 'E': // XXX: Newline
     case 'H': // XXX: set tabstop
     case 'M': // XXX: reverse linefeed
+        t->vte.state = XKT_ST_DEF;
+        break;
     case 'Z': // XXX: DECID
+        write(t->pty, "\x1b[?6c", 5);
+        t->vte.state = XKT_ST_DEF;
+        break;
     case '7': case '8': // XXX: save/restore state
     case '>': case '=': // XXX: keypad mode
     case 0x1a: case 0x18:
         t->vte.state = XKT_ST_DEF;
         break;
-    case ']': // XXX: OSC
-        //t->vte.state = XKT_ST_OSC;
-        t->vte.state = XKT_ST_IGN; // XXX: P will leave artifacts.
+    case ']': // OSC
+        t->vte.state = XKT_ST_OSC;
         break;
     }
 }
@@ -505,17 +692,22 @@ xkt_vte_in_normal(struct xkterm *t, uint32_t ucs4)
     case '\n':
     case '\v':
     case '\f':
+        printf("  NL\n");
         t->vte.cx = 0;
         t->vte.cy++;
+        xkt_vte_checkwrap(t);
         break;
     case '\r':
+        printf("  CR\n");
         t->vte.cx = 0;
         break;
     case '\b':
+        printf("  BS\n");
         t->vte.rows[t->vte.cy][t->vte.cx].rune = ' ';
         t->vte.cx--;
         break;
     case '\t':
+        printf("  TAB\n");
         t->vte.cx = 8 + (t->vte.cx & 0x7ffffff8);
         break;
     case 0x1b:
@@ -529,9 +721,12 @@ xkt_vte_in_normal(struct xkterm *t, uint32_t ucs4)
         break;
     default:
         if (ucs4 >= ' ') {
+            xkt_vte_checkwrap(t);
+
             // XXX: Check for double width cells!
             t->vte.rows[t->vte.cy][t->vte.cx].rune = ucs4;
             t->vte.cx++;
+            printf("%c", (char)ucs4);
         }
     }
 }
@@ -581,22 +776,42 @@ xkt_vte_input(struct xkterm *t, char *buf, int n)
         case XKT_ST_ESC:
             xkt_vte_in_escape(t, ucs4);
             break;
+        case XKT_ST_CSIP:
+            switch (ucs4) {
+            case '?':
+                t->vte.qmark = true;
+            case '>':
+            case '<':
+            case '=':
+                t->vte.state = XKT_ST_CSI;
+                break;
+            default:
+                t->vte.state = XKT_ST_CSI;
+                xkt_vte_in_csi(t, ucs4);
+                break;
+            }
+            break;
         case XKT_ST_CSI:
             xkt_vte_in_csi(t, ucs4);
             break;
+        case XKT_ST_OSC:
+            switch (ucs4) {
+            case 'P':
+                t->vte.state = XKT_ST_IGN;
+                t->vte.n = 6;
+                break;
+            case 'R':
+            case '?':
+                t->vte.state = XKT_ST_DEF;
+                break;
+            }
+            break;
         case XKT_ST_IGN:
-            t->vte.state = XKT_ST_DEF;
+            if (--t->vte.n <= 0)
+                t->vte.state = XKT_ST_DEF;
             break;
         }
 
-        if (t->vte.cx >= t->cellw - 1) {
-            t->vte.cx = 0;
-            t->vte.cy++;
-        }
-        if (t->vte.cy >= t->cellh) {
-            xkt_vte_wrap(t, t->vte.cy - t->cellh + 1);
-            t->vte.cy = t->cellh - 1;
-        }
     }
 }
 
@@ -690,25 +905,38 @@ xkterm_render(struct xkterm *t, int width, int height, unsigned char *data)
     for (posy = 0; posy < t->cellh; posy++) {
     for (posx = 0; posx < t->cellw; posx++) {
         rune = t->vte.rows[posy][posx].rune;
-        if (rune <= ' ')
-            continue;
-        cell = get_glyph(rune, false);
-
-        color = colors[XKT_FGCOLOR];
 
         woff = t->conf->xkt.cell_width*posx;
         hoff = t->conf->xkt.cell_height*posy;
 
+        if (rune <= ' ')
+            cell = get_glyph(' ', false);
+        else
+            cell = get_glyph(rune, false);
+        if (posx == t->vte.cx && posy == t->vte.cy) {
+            color = colors[XKT_MAGENTA];
+            for (j = 0; j < cell->ph->height; j++) {
+            for (i = 0; i < cell->ph->width; i++) {
+                if ((i+j) & 0x1)
+                    d[stride*(j+hoff) + i + woff] = color;
+            }}
+            color = colors[XKT_BLACK];
+        } else {
+            color = colors[XKT_FGCOLOR];
+        }
+
+        if (rune <= ' ')
+            continue;
+
         // XXX: This code does _not_ handle a wide character at the last cell on the edge of the window.
         bw = (cell->ph->width + 7)/8;
         for (j = 0; j < cell->ph->height; j++) {
-            for (i = 0; i < cell->ph->width; i++) {
-                if (stride*(j+hoff) + i + woff > stride * t->pixh)
-                    break;
-                if (cell->bm[j*bw + (i/8)] & (0x80 >> (i & 7)))
-                    d[stride*(j+hoff) + i + woff] = color;
-            }
-        }
+        for (i = 0; i < cell->ph->width; i++) {
+            if (stride*(j+hoff) + i + woff > stride * t->pixh)
+                break;
+            if (cell->bm[j*bw + (i/8)] & (0x80 >> (i & 7)))
+                d[stride*(j+hoff) + i + woff] = color;
+        }}
         if (cell->ph->width > t->conf->xkt.cell_width) {
             posx += (cell->ph->width / t->conf->xkt.cell_width) - 1;
             if (posx >= t->cellw)

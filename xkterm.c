@@ -514,6 +514,8 @@ init_xkterm(void)
     xkt.vte.cx = 0;
     xkt.vte.cy = 0;
     xkt.vte.state = 0;
+    xkt.vte.wtop = 0;
+    xkt.vte.wbot = xkt.cellh - 1;
 
     //tsm_screen_new(&xkt.tsm_screen, NULL, NULL);
     //tsm_screen_set_max_sb(xkt.tsm_screen, 4096);

@@ -44,6 +44,8 @@ struct xkt_vte {
     struct xkt_cell *cells;
     struct xkt_cell **rows;
     int cx, cy;
+    bool cvis;
+    int wtop, wbot;
 };
 
 struct xkterm {
