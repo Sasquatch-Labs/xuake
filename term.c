@@ -350,22 +350,23 @@ xkt_vte_clear(struct xkterm *t)
 }
 
 void
-xkt_vte_clearline(struct xkterm *t, int row)
+xkt_vte_partial_clearline(struct xkterm *t, int row, int col0, int col1)
 {
     int i;
 
-    for (i = 0; i < t->cellw; i++) {
+    for (i = col0; i < col1; i++) {
         t->vte.rows[row][i].rune = 0x20;
         t->vte.rows[row][i].dirty = true;
     }
 }
 
 void
-xkt_vte_partial_clearline(struct xkterm *t, int row, int col)
+xkt_vte_clearline(struct xkterm *t, int row)
 {
     int i;
 
-    for (i = 0; i <= col; i++) {
+    //xkt_vte_partial_clearline(t, row, 0, t->cellw);
+    for (i = 0; i < t->cellw; i++) {
         t->vte.rows[row][i].rune = 0x20;
         t->vte.rows[row][i].dirty = true;
     }
@@ -376,6 +377,7 @@ xkt_vte_clearline_from(struct xkterm *t, int row, int col)
 {
     int i;
 
+    //xkt_vte_partial_clearline(t, row, col, t->cellw - col - 1);
     for (i = col; i < t->cellw; i++) {
         t->vte.rows[row][i].rune = 0x20;
         t->vte.rows[row][i].dirty = true;
@@ -417,7 +419,7 @@ xkt_vte_erasedisplay(struct xkterm *t, int type)
         return;
     }
 
-    xkt_vte_partial_clearline(t, t->vte.cy, t->vte.cx);
+    xkt_vte_partial_clearline(t, t->vte.cy, 0, t->vte.cx);
 }
 
 void
@@ -440,6 +442,25 @@ xkt_vte_insert_line(struct xkterm *t, int line, int bot)
 }
 
 void
+xkt_vte_kill_line(struct xkterm *t, int line, int bot)
+{
+    struct xkt_cell *tmp;
+    int i;
+
+    if (bot > t->vte.wbot
+        || line < t->vte.wtop
+        || line >= bot)
+        return;
+
+    xkt_vte_clearline(t, line);
+    tmp = t->vte.rows[line];
+    // XXX: mark everything dirty.
+    for (i = line; i < bot; i++)
+        t->vte.rows[i] = t->vte.rows[i+1];
+    t->vte.rows[bot] = tmp;
+}
+
+void
 xkt_vte_wrap(struct xkterm *t, int lines)
 {
     struct xkt_cell *tmp;
@@ -453,12 +474,7 @@ xkt_vte_wrap(struct xkterm *t, int lines)
     }
 
     while (lines--) {
-        xkt_vte_clearline(t, t->vte.wtop);
-        tmp = t->vte.rows[t->vte.wtop];
-        // XXX: mark everything dirty.
-        for (i = 0; i < t->vte.wbot; i++)
-            t->vte.rows[i] = t->vte.rows[i+1];
-        t->vte.rows[t->vte.wbot] = tmp;
+        xkt_vte_kill_line(t, t->vte.wtop, t->vte.wbot);
     }
 }
 
@@ -477,6 +493,17 @@ xkt_vte_checkwrap(struct xkterm *t)
         t->vte.cy = t->vte.wbot;
     } else if (t->vte.cy < 0) {
         t->vte.cy = 0;
+    }
+}
+
+void
+xkt_vte_setmode(struct xkterm *t, int mode, bool private, bool set)
+{
+    switch (mode) {
+    case 25: // Cursor Visible
+        if (!private) break;
+        t->vte.cvis = set;
+        break;
     }
 }
 
@@ -502,9 +529,6 @@ xkt_vte_in_csi(struct xkterm *t, uint32_t ucs4)
         }
         memset(t->vte.pbuf, 0, XKT_PBUF_SZ);
         t->vte.p = t->vte.pbuf;
-        return;
-    case '?':
-        t->vte.qmark = true;
         return;
     case 0x1a: case 0x18:
         t->vte.state = XKT_ST_DEF;
@@ -555,10 +579,15 @@ xkt_vte_in_csi(struct xkterm *t, uint32_t ucs4)
         t->vte.cy -= t->vte.param[0];
         break;
     case 'G': // Cursor to indicated column in cur row
-    case 'd': // move cursor to indicated row, cur col
+    case '`': // move cursor to col in current row
         if (t->vte.n > 1) break;
         if (t->vte.param[0] > 0) t->vte.param[0]--;
         t->vte.cx = t->vte.param[0];
+        break;
+    case 'd': // move cursor to indicated row, cur col
+        if (t->vte.n > 1) break;
+        if (t->vte.param[0] > 0) t->vte.param[0]--;
+        t->vte.cy = t->vte.param[0];
         break;
     case 'H': // Cursor to row;col
     case 'f': // move cursor to indicate row;col
@@ -581,7 +610,7 @@ xkt_vte_in_csi(struct xkterm *t, uint32_t ucs4)
             } else if (t->vte.cx < 0) {
                 break;
             } else {
-                xkt_vte_partial_clearline(t, t->vte.cy, t->vte.cx);
+                xkt_vte_partial_clearline(t, t->vte.cy, 0, t->vte.cx);
             }
         } else if (t->vte.n == 1 && t->vte.param[0] == 2) {
             xkt_vte_clearline(t, t->vte.cy);
@@ -590,13 +619,37 @@ xkt_vte_in_csi(struct xkterm *t, uint32_t ucs4)
         }
         break;
     case 'L': // Insert blank lines
-        if (t->vte.n == 0) { // XXX incomplete
+        if (t->vte.n == 0) {
             xkt_vte_insert_line(t, t->vte.cy, t->vte.wbot);
+        } else if (t->vte.n == 1) {
+            while (t->vte.param[0]--)
+                xkt_vte_insert_line(t, t->vte.cy, t->vte.wbot);
         }
         break;
     case 'M': // delete lines
+        if (t->vte.n == 0) {
+            xkt_vte_kill_line(t, t->vte.cy, t->vte.wbot);
+        } else if (t->vte.n == 1) {
+            while (t->vte.param[0]--)
+                xkt_vte_kill_line(t, t->vte.cy, t->vte.wbot);
+        }
+        break;
     case 'P': // delete chars from line
+        if (t->vte.n > 1) break;
+        if (t->vte.n == 0) {
+            t->vte.param[0] = t->vte.n = 1;
+        }
+        memmove(&t->vte.rows[t->vte.cy][t->vte.cx],
+            &t->vte.rows[t->vte.cy][t->vte.cx + t->vte.param[0]],
+            t->vte.param[0]*sizeof(struct xkt_cell));
+        xkt_vte_partial_clearline(t, t->vte.cy, t->vte.cx + t->vte.param[0], t->cellw);
+        break;
     case 'X': // erase chars from line
+        if (t->vte.n > 1) break;
+        if (t->vte.n == 0) {
+            t->vte.param[0] = t->vte.n = 1;
+        }
+        xkt_vte_partial_clearline(t, t->vte.cy, t->vte.cx + t->vte.param[0], t->cellw);
         break;
     case 'c': // Answer I am a VT102
         write(t->pty, "\x1b[?6c", 5);
@@ -604,7 +657,13 @@ xkt_vte_in_csi(struct xkterm *t, uint32_t ucs4)
     case 'g': // clear tab stop
         break;
     case 'h': // set mode
+        if (t->vte.n > 1) break;
+        xkt_vte_setmode(t, t->vte.param[0], t->vte.qmark, true);
+        break;
     case 'l': // reset mode
+        if (t->vte.n > 1) break;
+        xkt_vte_setmode(t, t->vte.param[0], t->vte.qmark, false);
+        break;
     case 'm': // set attributes
         break;
     case 'n': // status
@@ -620,6 +679,7 @@ xkt_vte_in_csi(struct xkterm *t, uint32_t ucs4)
         }
         break;
     case 'q': // set leds
+        break;
     case 'r': // set scrolling region
         if (t->vte.n > 2) break;
         if (t->vte.param[0]) t->vte.param[0]--;
@@ -632,7 +692,6 @@ xkt_vte_in_csi(struct xkterm *t, uint32_t ucs4)
         t->vte.wbot = t->vte.param[1];
     case 's': // save cursor location
     case 'u': // restore cursor location
-    case '`': // move cursor to col in current row
         break;
     default:
         return;
@@ -656,23 +715,36 @@ xkt_vte_in_escape(struct xkterm *t, uint32_t ucs4)
         memset(t->vte.pbuf, 0, XKT_PBUF_SZ);
         t->vte.p = t->vte.pbuf;
         t->vte.qmark = false;
-        break;
+        return;
     case '%': case '#': case '(': case ')':
         // Ignore alignment command and character set commands.  UTF-8 or GTFO.
         t->vte.state = XKT_ST_IGN;
         t->vte.n = 1;
         break;
     case 'c': // XXX: RESET
-    case 'D': // XXX: Linefeed
-    case 'E': // XXX: Newline
+        break;
+    case 'E': // Newline
+        t->vte.cx = 0;
+    case 'D': // Linefeed
+        t->vte.cy++;
+        xkt_vte_checkwrap(t);
+        break;
     case 'H': // XXX: set tabstop
-    case 'M': // XXX: reverse linefeed
         t->vte.state = XKT_ST_DEF;
+        break;
+    case 'M': // reverse linefeed
+        t->vte.state = XKT_ST_DEF;
+        t->vte.cy--;
+        if (t->vte.cy < t->vte.wtop) {
+            t->vte.cy = t->vte.wtop;
+            xkt_vte_insert_line(t, t->vte.cy, t->vte.wbot);
+        }
         break;
     case 'Z': // XXX: DECID
         write(t->pty, "\x1b[?6c", 5);
         t->vte.state = XKT_ST_DEF;
         break;
+    case '\\': // String terminator
     case '7': case '8': // XXX: save/restore state
     case '>': case '=': // XXX: keypad mode
     case 0x1a: case 0x18:
@@ -682,6 +754,7 @@ xkt_vte_in_escape(struct xkterm *t, uint32_t ucs4)
         t->vte.state = XKT_ST_OSC;
         break;
     }
+    printf("  ESC-%c", (char)ucs4);
 }
 
 void
@@ -693,7 +766,7 @@ xkt_vte_in_normal(struct xkterm *t, uint32_t ucs4)
     case '\v':
     case '\f':
         printf("  NL\n");
-        t->vte.cx = 0;
+        //t->vte.cx = 0; // XXX: There's a CRLF mode.
         t->vte.cy++;
         xkt_vte_checkwrap(t);
         break;
@@ -714,7 +787,7 @@ xkt_vte_in_normal(struct xkterm *t, uint32_t ucs4)
         t->vte.state = XKT_ST_ESC;
         break;
     case 0x00:
-    case '\a': // XXX No bell
+    case '\a': // XXX Take Bell!  HONK!!
     case 0x0e: case 0x0f: // No alternate character sets
     case 0x7f:
         // IGNORED.
@@ -811,7 +884,6 @@ xkt_vte_input(struct xkterm *t, char *buf, int n)
                 t->vte.state = XKT_ST_DEF;
             break;
         }
-
     }
 }
 
@@ -913,7 +985,7 @@ xkterm_render(struct xkterm *t, int width, int height, unsigned char *data)
             cell = get_glyph(' ', false);
         else
             cell = get_glyph(rune, false);
-        if (posx == t->vte.cx && posy == t->vte.cy) {
+        if (t->vte.cvis && posx == t->vte.cx && posy == t->vte.cy) {
             color = colors[XKT_MAGENTA];
             for (j = 0; j < cell->ph->height; j++) {
             for (i = 0; i < cell->ph->width; i++) {
