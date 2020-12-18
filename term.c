@@ -447,6 +447,14 @@ xkt_vte_erasedisplay(struct xkterm *t, int type)
     int i;
 
     switch (type) {
+    case 0:
+        if (t->vte.cy < 0) goto fullclear;
+        if (t->vte.cy >= t->cellh) break;
+        xkt_vte_clearline_from(t, t->vte.cy, t->vte.cx);
+        if (t->vte.cy == t->cellh - 1) break;
+        for (i = t->vte.cy + 1; i < t->cellh; i++)
+            xkt_vte_clearline(t, i);
+        break;
     case 1: // handled below.
         break;
     case 2:
@@ -518,38 +526,14 @@ xkt_vte_kill_line(struct xkterm *t, int line, int bot)
 }
 
 void
-xkt_vte_wrap(struct xkterm *t, int lines)
+xkt_vte_movecursor_nowrap(struct xkterm *t, int x, int y)
 {
-    struct xkt_cell *tmp;
-    int i;
-
-    printf("  WRAP: %d\n");
-
-    if (lines > t->cellh) {
-        xkt_vte_clear(t);
-        return;
-    }
-
-    while (lines--) {
-        xkt_vte_kill_line(t, t->vte.wtop, t->vte.wbot);
-    }
-}
-
-void
-xkt_vte_movecursor(struct xkterm *t, int x, int y)
-{
-
     if (x < 0)
         x = 0;
-    else if (x >= t->cellw) {
+    else if (x >= t->cellw)
         x = t->cellw - 1;
-        y++;
-    }
 
-    if (y == t->vte.cy + 1 && t->vte.cy == t->vte.wbot) {
-        xkt_vte_kill_line(t, t->vte.wtop, t->vte.wbot);
-        y = t->vte.wbot;
-    } else if (y < 0)
+    if (y < 0)
         y = 0;
     else if (y >= t->cellh)
         y = t->cellh - 1;
@@ -559,21 +543,32 @@ xkt_vte_movecursor(struct xkterm *t, int x, int y)
 }
 
 void
-xkt_vte_checkwrap(struct xkterm *t)
+xkt_vte_movecursor(struct xkterm *t, int x, int y)
 {
-    if (t->vte.cx >= t->cellw - 1) {
-        t->vte.cx = 0;
-        t->vte.cy++;
-    } else if (t->vte.cx < 0) {
-        t->vte.cx = 0;
+    if (x < 0)
+        x = 0;
+    else if (x == t->cellw && x == t->vte.cx + 1) {
+        x = 0;
+        y++;
+    } else if (x >= t->cellw) {
+        x = t->cellw - 1;
     }
 
-    if (t->vte.cy > t->vte.wbot) {
-        xkt_vte_wrap(t, t->vte.cy - t->vte.wbot);
-        t->vte.cy = t->vte.wbot;
-    } else if (t->vte.cy < 0) {
-        t->vte.cy = 0;
-    }
+    if (y == t->vte.cy + 1 && t->vte.cy == t->vte.wbot) {
+        printf("WRAP [%d, %d] -> [%d, %d]\n", t->vte.cx, t->vte.cy, x, y);
+        xkt_vte_kill_line(t, t->vte.wtop, t->vte.wbot);
+        y = t->vte.wbot;
+    } else if (y == t->vte.cy - 1 && t->vte.cy == t->vte.wtop) {
+        printf("REV WRAP\n");
+        xkt_vte_insert_line(t, t->vte.cy, t->vte.wbot);
+        y = t->vte.wtop;
+    } else if (y < 0)
+        y = 0;
+    else if (y >= t->cellh)
+        y = t->cellh - 1;
+
+    t->vte.cx = x;
+    t->vte.cy = y;
 }
 
 void
@@ -627,56 +622,52 @@ xkt_vte_in_csi(struct xkterm *t, uint32_t ucs4)
     case 'A': // Cursor up
         if (t->vte.n > 1) break;
         if (t->vte.param[0] == 0) t->vte.param[0]++;
-        t->vte.cy -= t->vte.param[0];
-        //xkt_vte_movecursor(t, t->vte.cx, t->vte.cy - t->vte.param[0];
+        xkt_vte_movecursor_nowrap(t, t->vte.cx, t->vte.cy - t->vte.param[0]);
         break;
     case 'B': // Cursor down
     case 'e': // move cursor down n rows
         if (t->vte.n > 1) break;
         if (t->vte.param[0] == 0) t->vte.param[0]++;
-        t->vte.cy += t->vte.param[0];
+        xkt_vte_movecursor_nowrap(t, t->vte.cx, t->vte.cy + t->vte.param[0]);
         break;
     case 'C': // Cursor right
     case 'a': // move the cursor right by n col
         if (t->vte.n > 1) break;
         if (t->vte.param[0] == 0) t->vte.param[0]++;
-        t->vte.cx += t->vte.param[0];
+        xkt_vte_movecursor_nowrap(t, t->vte.cx + t->vte.param[0], t->vte.cy);
         break;
     case 'D': // Cursor left
         if (t->vte.n > 1) break;
         if (t->vte.param[0] == 0) t->vte.param[0]++;
-        t->vte.cx -= t->vte.param[0];
+        xkt_vte_movecursor_nowrap(t, t->vte.cx - t->vte.param[0], t->vte.cy);
         break;
     case 'E': // Cursor down n rows, to col 1
         if (t->vte.n > 1) break;
         if (t->vte.param[0] == 0) t->vte.param[0]++;
-        t->vte.cx = 0;
-        t->vte.cy += t->vte.param[0];
+        xkt_vte_movecursor_nowrap(t, 0, t->vte.cy + t->vte.param[0]);
         break;
     case 'F': // Cursor up n rows, to col 1
         if (t->vte.n > 1) break;
         if (t->vte.param[0] == 0) t->vte.param[0]++;
-        t->vte.cx = 0;
-        t->vte.cy -= t->vte.param[0];
+        xkt_vte_movecursor_nowrap(t, 0, t->vte.cy - t->vte.param[0]);
         break;
     case 'G': // Cursor to indicated column in cur row
     case '`': // move cursor to col in current row
         if (t->vte.n > 1) break;
         if (t->vte.param[0] > 0) t->vte.param[0]--;
-        t->vte.cx = t->vte.param[0];
+        xkt_vte_movecursor_nowrap(t, t->vte.param[0], t->vte.cy);
         break;
     case 'd': // move cursor to indicated row, cur col
         if (t->vte.n > 1) break;
         if (t->vte.param[0] > 0) t->vte.param[0]--;
-        t->vte.cy = t->vte.param[0];
+        xkt_vte_movecursor_nowrap(t, t->vte.cx, t->vte.param[0]);
         break;
     case 'H': // Cursor to row;col
     case 'f': // move cursor to indicate row;col
         if (t->vte.n > 2) break;
         if (t->vte.param[0] > 0) t->vte.param[0]--;
         if (t->vte.param[1] > 0) t->vte.param[1]--;
-        t->vte.cy = t->vte.param[0];
-        t->vte.cx = t->vte.param[1];
+        xkt_vte_movecursor_nowrap(t, t->vte.param[1], t->vte.param[0]);
         break;
     case 'J': // Erase display
         if (t->vte.n == 1)
@@ -805,21 +796,17 @@ xkt_vte_in_escape(struct xkterm *t, uint32_t ucs4)
     case 'c': // XXX: RESET
         break;
     case 'E': // Newline
-        t->vte.cx = 0;
+        xkt_vte_movecursor(t, 0, t->vte.cy+1);
+        break;
     case 'D': // Linefeed
-        t->vte.cy++;
-        xkt_vte_checkwrap(t);
+        xkt_vte_movecursor(t, t->vte.cx, t->vte.cy+1);
         break;
     case 'H': // XXX: set tabstop
         t->vte.state = XKT_ST_DEF;
         break;
     case 'M': // reverse linefeed
         t->vte.state = XKT_ST_DEF;
-        t->vte.cy--;
-        if (t->vte.cy < t->vte.wtop) {
-            t->vte.cy = t->vte.wtop;
-            xkt_vte_insert_line(t, t->vte.cy, t->vte.wbot);
-        }
+        xkt_vte_movecursor(t, t->vte.cx, t->vte.cy-1);
         break;
     case 'Z': // XXX: DECID
         write(t->pty, "\x1b[?6c", 5);
@@ -847,22 +834,19 @@ xkt_vte_in_normal(struct xkterm *t, uint32_t ucs4)
     case '\v':
     case '\f':
         printf("  NL\n");
-        //t->vte.cx = 0; // XXX: There's a CRLF mode.
-        t->vte.cy++;
-        xkt_vte_checkwrap(t);
+        xkt_vte_movecursor(t, t->vte.cx, t->vte.cy+1);
         break;
     case '\r':
         printf("  CR\n");
-        t->vte.cx = 0;
+        xkt_vte_movecursor(t, 0, t->vte.cy);
         break;
     case '\b':
         printf("  BS\n");
-        t->vte.rows[t->vte.cy][t->vte.cx].rune = ' ';
-        t->vte.cx--;
+        xkt_vte_movecursor(t, t->vte.cx-1, t->vte.cy);
         break;
     case '\t':
         printf("  TAB\n");
-        t->vte.cx = 8 + (t->vte.cx & 0x7ffffff8);
+        xkt_vte_movecursor(t, 8 + (t->vte.cx & 0x7ffffff8), t->vte.cy);
         break;
     case 0x1b:
         t->vte.state = XKT_ST_ESC;
@@ -875,11 +859,11 @@ xkt_vte_in_normal(struct xkterm *t, uint32_t ucs4)
         break;
     default:
         if (ucs4 >= ' ') {
-            xkt_vte_checkwrap(t);
+            //xkt_vte_checkwrap(t);
 
             // XXX: Check for double width cells!
             t->vte.rows[t->vte.cy][t->vte.cx].rune = ucs4;
-            t->vte.cx++;
+            xkt_vte_movecursor(t, t->vte.cx+1, t->vte.cy);
             printf("%c", (char)ucs4);
         }
     }
@@ -1046,10 +1030,6 @@ xkterm_render(struct xkterm *t, int width, int height, unsigned char *data)
     uint32_t rune;
     cell_bitmap_t *cell;
     uint32_t *d, color;
-    /*
-    if (!xkterm_check(t))
-        return;
-    */
 
     xkterm_clear(t, width, height, data);
 
