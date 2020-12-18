@@ -518,15 +518,6 @@ init_xkterm(void)
     xkt.vte.wtop = 0;
     xkt.vte.wbot = xkt.cellh - 1;
 
-    //tsm_screen_new(&xkt.tsm_screen, NULL, NULL);
-    //tsm_screen_set_max_sb(xkt.tsm_screen, 4096);
-    //tsm_screen_resize(xkt.tsm_screen, width/xkt.conf->xkt.cell_width, height/xkt.conf->xkt.cell_height);
-    dirtysz = (xkt.cellw)*(xkt.cellh)*sizeof(bool);
-    xkt.cell_dirty = malloc(dirtysz);
-    memset(xkt.cell_dirty, 0, dirtysz);
-
-    //tsm_vte_new(&xkt.vte, xkt.tsm_screen, xkt_vte_write_cb, &xkt, NULL, NULL);
-
     xkterm_clear_full(&xkt, xkt.pixw, xkt.pixh, xkt.data);
 }
 

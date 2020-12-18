@@ -115,9 +115,6 @@ xkterm_key_input(struct xkterm *t, xkb_keysym_t sym, uint32_t modifiers)
     }
 #endif // XKTERM_HARD_KEY_REMAPS
 
-    //if (tsm_vte_handle_keyboard(t->vte, sym, 0, modifiers, ucs4))
-    //    tsm_screen_sb_reset(t->tsm_screen);
-
     if (modifiers == 0 || modifiers == XKT_MODIFIER_SHIFT) {
         char sb[2];
         if ((ucs4 < 127 && ucs4 >= ' ')
@@ -209,24 +206,64 @@ xkterm_forkpty(struct xkterm *t)
 void
 xkterm_resize(struct xkterm *t, uint32_t w, uint32_t h)
 {
-    size_t dirtysz;
-    //tsm_screen_resize(t->tsm_screen, w/t->conf->xkt.cell_width, h/t->conf->xkt.cell_height);
+    struct xkt_cell *oc;
+    struct xkt_cell **or;
+    uint32_t ocw, och, minw, minh, newoff, oldoff;
+    int onc, i, j;
+
+    ocw = t->cellw;
+    och = t->cellh;
+    onc = t->vte.ncells;
+
     t->pixw = w;
     t->pixh = h;
     t->cellw = w/t->conf->xkt.cell_width;
     t->cellh = h/t->conf->xkt.cell_height;
+    t->vte.ncells = t->cellw*t->cellh;
+
+    if (onc == t->vte.ncells && ocw == t->cellw && och == t->cellh)
+        return;
 
     set_pty_size(t, t->apty);
 
-    if (t->cell_dirty)
-        free(t->cell_dirty);
+    oc = t->vte.cells;
+    or = t->vte.rows;
 
-    dirtysz = (t->cellw)*(t->cellh)*sizeof(bool);
+    t->vte.cells = malloc(t->vte.ncells*sizeof(struct xkt_cell));
+    t->vte.rows = malloc(t->cellh*sizeof(struct xkt_cell *));
+    for (i = 0; i < t->vte.ncells; i++) {
+        t->vte.cells[i].rune = 0x20;
+        t->vte.cells[i].dirty = true;
+    }
+    for (i = 0; i < t->cellh; i++)
+        t->vte.rows[i] = &t->vte.cells[i*t->cellw];
 
-    t->cell_dirty = malloc(dirtysz);
-    memset(t->cell_dirty, 0, dirtysz);
+    t->vte.wtop = 0;
+    t->vte.wbot = t->cellh - 1;
 
-    // XXX: resize cell array...
+    minw = ocw <= t->cellw ? ocw : t->cellw;
+
+    if (t->vte.cx >= t->cellw)
+        t->vte.cx = t->cellw - 1;
+
+    if (och <= t->cellh) {
+        minh = och;
+        oldoff = 0;
+        newoff = 0;
+    } else {
+        minh = t->cellh;
+        oldoff = och - t->cellh;
+        if (t->vte.cy >= t->cellh)
+            t->vte.cy = t->cellh - 1;
+    }
+
+    for (j = 0; j < minh; j++) {
+    for (i = 0; i < minw; i++) {
+        t->vte.rows[j][i].rune = or[j+oldoff][i].rune;
+    }}
+
+    free(oc);
+    free(or);
 }
 
 #if 0
@@ -365,11 +402,7 @@ xkt_vte_clearline(struct xkterm *t, int row)
 {
     int i;
 
-    //xkt_vte_partial_clearline(t, row, 0, t->cellw);
-    for (i = 0; i < t->cellw; i++) {
-        t->vte.rows[row][i].rune = 0x20;
-        t->vte.rows[row][i].dirty = true;
-    }
+    xkt_vte_partial_clearline(t, row, 0, t->cellw);
 }
 
 void
@@ -377,11 +410,7 @@ xkt_vte_clearline_from(struct xkterm *t, int row, int col)
 {
     int i;
 
-    //xkt_vte_partial_clearline(t, row, col, t->cellw - col - 1);
-    for (i = col; i < t->cellw; i++) {
-        t->vte.rows[row][i].rune = 0x20;
-        t->vte.rows[row][i].dirty = true;
-    }
+    xkt_vte_partial_clearline(t, row, col, t->cellw);
 }
 
 void
@@ -923,6 +952,7 @@ xkterm_clear_full(struct xkterm *t, int w, int h, unsigned char *data)
         d[i] = colors[XKT_BGCOLOR];
 }
 
+#if 0
 void
 xkterm_clear_dirty(struct xkterm *t, int w, int h, unsigned char *data)
 {
@@ -948,6 +978,7 @@ xkterm_clear_dirty(struct xkterm *t, int w, int h, unsigned char *data)
         }
     }
 }
+#endif
 
 void
 xkterm_use_full_clear(void)
@@ -969,7 +1000,6 @@ xkterm_render(struct xkterm *t, int width, int height, unsigned char *data)
     */
 
     xkterm_clear(t, width, height, data);
-    //tsm_screen_draw(t->tsm_screen, xkterm_render_draw_cell_cb, t);
 
     stride = t->pixw;
     d = (uint32_t *)(t->data);

@@ -59,7 +59,6 @@ struct xkterm {
     unsigned char *data;
     struct wlr_texture *texture;
     struct xkt_vte vte;
-    bool *cell_dirty;
     struct xkconfig *conf;
 };
 
