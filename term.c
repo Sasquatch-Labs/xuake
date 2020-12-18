@@ -10,6 +10,7 @@
 #include <termios.h>
 
 //#include "xuake.h"
+#include "xkdefs.h"
 #include "ft.h"
 #include "term.h"
 
@@ -70,6 +71,8 @@ void
 xkterm_key_input(struct xkterm *t, xkb_keysym_t sym, uint32_t modifiers)
 {
     uint32_t ucs4;
+    char sb[6];
+    int i = 0;
     bool handled = false;
 
     ucs4 = xkb_keysym_to_utf32(sym);
@@ -81,51 +84,76 @@ xkterm_key_input(struct xkterm *t, xkb_keysym_t sym, uint32_t modifiers)
     //    ucs4 = TSM_VTE_INVALID;
     printf("xkterm_key_input keysym: %x, %x, %x\n", ucs4, sym, modifiers);
 
-//#ifdef XKTERM_HARD_KEY_REMAPS
-#if 0
+#ifdef XKTERM_HARD_KEY_REMAPS
     // XXX: This was to make my fingers comfortable as this started getting usable.
     // I probably need to co-opt the xk_bind_key() lua call to deal with this kind
     // of remapping.  Or just start my screen re-write and codify this stuff there.
     // See xkdefs.h to turn this off if it annoys you.
+    printf("checking for key remaps: %d %d\n", modifiers, ucs4);
     if (modifiers & XKT_MODIFIER_CTRL && modifiers & XKT_MODIFIER_ALT) {
         // drop through.
     } else if (modifiers & XKT_MODIFIER_CTRL) {
         if (ucs4 == 't') {
-            if (tsm_vte_handle_keyboard(t->vte, XKB_KEY_a, 0, XKT_MODIFIER_CTRL, 'a'))
-                tsm_screen_sb_reset(t->tsm_screen);
-            if (tsm_vte_handle_keyboard(t->vte, XKB_KEY_c, 0, 0, 'c'))
-                tsm_screen_sb_reset(t->tsm_screen);
+            write(t->pty, "\x01""c", 2);
             return;
         }
     } else if (modifiers & XKT_MODIFIER_ALT) {
         switch (ucs4) {
         case ',':
-            if (tsm_vte_handle_keyboard(t->vte, XKB_KEY_a, 0, XKT_MODIFIER_CTRL, 'a'))
-                tsm_screen_sb_reset(t->tsm_screen);
-            if (tsm_vte_handle_keyboard(t->vte, XKB_KEY_p, 0, 0, 'p'))
-                tsm_screen_sb_reset(t->tsm_screen);
+            write(t->pty, "\x01""p", 2);
             return;
         case '.':
-            if (tsm_vte_handle_keyboard(t->vte, XKB_KEY_a, 0, XKT_MODIFIER_CTRL, 'a'))
-                tsm_screen_sb_reset(t->tsm_screen);
-            if (tsm_vte_handle_keyboard(t->vte, XKB_KEY_n, 0, 0, 'n'))
-                tsm_screen_sb_reset(t->tsm_screen);
+            write(t->pty, "\x01""n", 2);
             return;
         }
     }
 #endif // XKTERM_HARD_KEY_REMAPS
 
+    if (modifiers & XKT_MODIFIER_ALT) {
+        sb[i++] = '\x1b';
+        modifiers &= ~XKT_MODIFIER_ALT;
+    }
+
     if (modifiers == 0 || modifiers == XKT_MODIFIER_SHIFT) {
-        char sb[2];
         if ((ucs4 < 127 && ucs4 >= ' ')
             || ucs4 == '\n'
             || ucs4 == '\r'
+            || ucs4 == '\t'
             || ucs4 == 0x1b
             || ucs4 == '\b') {
-            sb[0] = ucs4 & 0x7f;
-            sb[1] = 0;
-            write(t->pty, sb, 1);
+            sb[i++] = ucs4 & 0x7f;
+            sb[i] = 0;
+            write(t->pty, sb, i);
+        } else if (ucs4 > 127) { // UTF-8 encode and send!
+            // XXX...
         }
+        return;
+    }
+
+    /*
+    Tested empirically with old libtsm based xkterm typing 
+    ^V^[A-Z] &c. into `cat | hexdump -C`
+    Ctrl A-Z and a-z: 0x01 - 0x1a
+    Ctrl Space and 2: 0x00
+    Ctrl 3-7: 0x1b - 0x1f
+    Ctrl 8: 0x7f
+    */
+
+    if (modifiers & XKT_MODIFIER_CTRL) {
+        if (ucs4 >= 'a' && ucs4 <= 'z') {
+            ucs4 = ucs4 - 'a' + 1;
+        } else if (ucs4 >= 'A' && ucs4 <= 'Z') {
+            ucs4 = ucs4 - 'A' + 1;
+        } else if (ucs4 >= '3' && ucs4 <= '7') {
+            ucs4 = ucs4 - '3' + 1;
+        } else if (ucs4 == ' ' || ucs4 == '2') {
+            ucs4 = 0;
+        } else {
+            return;
+        }
+        sb[i++] = ucs4 & 0x7f;
+        sb[i] = 0;
+        write(t->pty, sb, i);
     }
 }
 
@@ -508,6 +536,29 @@ xkt_vte_wrap(struct xkterm *t, int lines)
 }
 
 void
+xkt_vte_movecursor(struct xkterm *t, int x, int y)
+{
+
+    if (x < 0)
+        x = 0;
+    else if (x >= t->cellw) {
+        x = t->cellw - 1;
+        y++;
+    }
+
+    if (y == t->vte.cy + 1 && t->vte.cy == t->vte.wbot) {
+        xkt_vte_kill_line(t, t->vte.wtop, t->vte.wbot);
+        y = t->vte.wbot;
+    } else if (y < 0)
+        y = 0;
+    else if (y >= t->cellh)
+        y = t->cellh - 1;
+
+    t->vte.cx = x;
+    t->vte.cy = y;
+}
+
+void
 xkt_vte_checkwrap(struct xkterm *t)
 {
     if (t->vte.cx >= t->cellw - 1) {
@@ -577,6 +628,7 @@ xkt_vte_in_csi(struct xkterm *t, uint32_t ucs4)
         if (t->vte.n > 1) break;
         if (t->vte.param[0] == 0) t->vte.param[0]++;
         t->vte.cy -= t->vte.param[0];
+        //xkt_vte_movecursor(t, t->vte.cx, t->vte.cy - t->vte.param[0];
         break;
     case 'B': // Cursor down
     case 'e': // move cursor down n rows
@@ -728,7 +780,7 @@ xkt_vte_in_csi(struct xkterm *t, uint32_t ucs4)
     printf("  CSI-%c [", (char)ucs4, t->vte.n);
     for (i = 0; i < t->vte.n; i++)
         printf("%d ", t->vte.param[i]);
-    printf("]\n");
+    printf("] [%d,%d]\n", t->vte.cx, t->vte.cy);
 
     t->vte.state = XKT_ST_DEF;
 }
