@@ -45,6 +45,10 @@ xk_bind_key("xuake_exit", XK_MOD_ALT, XK_Escape)
 -- Default: exiting the xkt_cmd program causes xuake to terminate.
 xkt_respawn = false
 xkt_cmd = "/bin/bash"
+-- If you want xkterm and the drop down terminal to have different start commands
+-- use xkt_cmd for xkterm and xuake_cmd for the drop down terminal.  If you want
+-- them to be both the same, just use xkt_cmd.
+-- xuake_cmd = "/bin/bash"
 
 -- Color scheme based on/inspired by White/Green/Amber phosphors
 -- When I was a kid in the 80s, My first computer had a 4-color
