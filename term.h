@@ -27,10 +27,18 @@
 #define XKT_PBUF_SZ 32
 #define XKT_NPAR 16
 
+enum {
+	XKT_ATTR_BOLD = 1,
+	XKT_ATTR_BLINK = 2,
+	XKT_ATTR_RVID = 4
+};
+
 struct xkt_cell {
     uint32_t rune;
+	uint8_t fgcolor;
+	uint8_t bgcolor;
+	uint8_t attr;
     bool dirty;
-    // XXX: Add colors and attributes
 };
 
 struct xkt_vte {
@@ -46,6 +54,9 @@ struct xkt_vte {
     int cx, cy;
     bool cvis;
     int wtop, wbot;
+	uint8_t fgcolor;
+	uint8_t bgcolor;
+	uint8_t attr;
 };
 
 struct xkterm {

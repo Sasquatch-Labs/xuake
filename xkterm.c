@@ -508,6 +508,9 @@ init_xkterm(void)
     for (i = 0; i < xkt.vte.ncells; i++) {
         xkt.vte.cells[i].rune = 0x20;
         xkt.vte.cells[i].dirty = false;
+		xkt.vte.cells[i].fgcolor = XKT_FGCOLOR;
+		xkt.vte.cells[i].bgcolor = XKT_BGCOLOR;
+		xkt.vte.cells[i].attr = 0;
     }
     for (i = 0; i < xkt.cellh; i++)
         xkt.vte.rows[i] = &xkt.vte.cells[i*xkt.cellw];
@@ -517,6 +520,9 @@ init_xkterm(void)
     xkt.vte.state = 0;
     xkt.vte.wtop = 0;
     xkt.vte.wbot = xkt.cellh - 1;
+	xkt.vte.fgcolor = XKT_FGCOLOR;
+	xkt.vte.bgcolor = XKT_BGCOLOR;
+	xkt.vte.attr = 0;
 
     xkterm_clear_full(&xkt, xkt.pixw, xkt.pixh, xkt.data);
 }

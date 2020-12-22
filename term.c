@@ -131,7 +131,7 @@ xkterm_key_input(struct xkterm *t, xkb_keysym_t sym, uint32_t modifiers)
     }
 
     /*
-    Tested empirically with old libtsm based xkterm typing 
+    Tested empirically with old libtsm based xkterm typing
     ^V^[A-Z] &c. into `cat | hexdump -C`
     Ctrl A-Z and a-z: 0x01 - 0x1a
     Ctrl Space and 2: 0x00
@@ -262,6 +262,9 @@ xkterm_resize(struct xkterm *t, uint32_t w, uint32_t h)
     for (i = 0; i < t->vte.ncells; i++) {
         t->vte.cells[i].rune = 0x20;
         t->vte.cells[i].dirty = true;
+        t->vte.cells[i].fgcolor = XKT_FGCOLOR;
+        t->vte.cells[i].bgcolor = XKT_BGCOLOR;
+        t->vte.cells[i].attr = 0;
     }
     for (i = 0; i < t->cellh; i++)
         t->vte.rows[i] = &t->vte.cells[i*t->cellw];
@@ -288,6 +291,9 @@ xkterm_resize(struct xkterm *t, uint32_t w, uint32_t h)
     for (j = 0; j < minh; j++) {
     for (i = 0; i < minw; i++) {
         t->vte.rows[j][i].rune = or[j+oldoff][i].rune;
+        t->vte.cells[i].fgcolor = or[j+oldoff][i].fgcolor;
+        t->vte.cells[i].bgcolor = or[j+oldoff][i].bgcolor;
+        t->vte.cells[i].attr = or[j+oldoff][i].attr;
     }}
 
     free(oc);
@@ -411,6 +417,9 @@ xkt_vte_clear(struct xkterm *t)
     for (i = 0; i < t->vte.ncells; i++) {
         t->vte.cells[i].rune = 0x20;
         t->vte.cells[i].dirty = true;
+        t->vte.cells[i].fgcolor = XKT_FGCOLOR;
+        t->vte.cells[i].bgcolor = XKT_BGCOLOR;
+        t->vte.cells[i].attr = 0;
     }
 }
 
@@ -422,6 +431,9 @@ xkt_vte_partial_clearline(struct xkterm *t, int row, int col0, int col1)
     for (i = col0; i < col1; i++) {
         t->vte.rows[row][i].rune = 0x20;
         t->vte.rows[row][i].dirty = true;
+        t->vte.rows[row][i].fgcolor = XKT_FGCOLOR;
+        t->vte.rows[row][i].bgcolor = XKT_BGCOLOR;
+        t->vte.rows[row][i].attr = 0;
     }
 }
 
@@ -569,6 +581,91 @@ xkt_vte_movecursor(struct xkterm *t, int x, int y)
 
     t->vte.cx = x;
     t->vte.cy = y;
+}
+
+void
+xkt_vte_setattr(struct xkterm *t)
+{
+    int i;
+
+    if (t->vte.n == 0) {
+        t->vte.fgcolor = XKT_FGCOLOR;
+        t->vte.bgcolor = XKT_BGCOLOR;
+        t->vte.attr = 0;
+        return;
+    }
+
+    if (t->vte.n > XKT_NPAR)
+        t->vte.n = XKT_NPAR;
+
+    for (i = 0; i < t->vte.n; i++) {
+        switch (t->vte.param[i]) {
+        case 0:
+            t->vte.fgcolor = XKT_FGCOLOR;
+            t->vte.bgcolor = XKT_BGCOLOR;
+            t->vte.attr = 0;
+            break;
+        case 1:
+        case 4: // Underscore is simulated with bold
+        case 21:
+            t->vte.attr |= XKT_ATTR_BOLD;
+            break;
+        case 2:
+        case 10: case 11: case 12:
+            // XXX: ignored
+            break;
+        case 5:
+            t->vte.attr |= XKT_ATTR_BLINK;
+            break;
+        case 7:
+            t->vte.attr |= XKT_ATTR_RVID;
+            break;
+        case 22:
+            t->vte.attr = 0;
+            t->vte.bgcolor = XKT_BGCOLOR;
+            if (t->vte.fgcolor > XKT_LIGHT_GREY)
+                t->vte.fgcolor -= 8;
+            if (t->vte.fgcolor == 0)
+                t->vte.fgcolor = XKT_FGCOLOR;
+            break;
+        case 24:
+            t->vte.attr &= ~XKT_ATTR_BOLD;
+            break;
+        case 25:
+            t->vte.attr &= ~XKT_ATTR_BLINK;
+            break;
+        case 27:
+            t->vte.attr &= ~XKT_ATTR_RVID;
+            break;
+        case 30: case 31: case 32: case 33:
+        case 34: case 35: case 36: case 37:
+            t->vte.fgcolor = t->vte.param[i] - 30;
+            break;
+        case 38:
+        case 48:
+            // 256 color set.  next params are a color.
+            if (t->vte.param[i+1] == 2)
+                i += 4;
+            else if (t->vte.param[i+1] == 5)
+                i += 2;
+            break;
+        case 39:
+            t->vte.fgcolor = XKT_FGCOLOR;
+            break;
+        case 40: case 41: case 42: case 43:
+        case 44: case 45: case 46: case 47:
+            t->vte.bgcolor = t->vte.param[i] - 40;
+            break;
+        case 90: case 91: case 92: case 93:
+        case 94: case 95: case 96: case 97:
+            t->vte.fgcolor = t->vte.param[i] - 82;
+            break;
+        case 100: case 101: case 102: case 103:
+        case 104: case 105: case 106: case 107:
+            t->vte.bgcolor = t->vte.param[i] - 92;
+            break;
+        }
+    }
 }
 
 void
@@ -737,6 +834,7 @@ xkt_vte_in_csi(struct xkterm *t, uint32_t ucs4)
         xkt_vte_setmode(t, t->vte.param[0], t->vte.qmark, false);
         break;
     case 'm': // set attributes
+		xkt_vte_setattr(t);
         break;
     case 'n': // status
         if (t->vte.n == 1 && t->vte.param[0] == 5) {
@@ -863,6 +961,9 @@ xkt_vte_in_normal(struct xkterm *t, uint32_t ucs4)
 
             // XXX: Check for double width cells!
             t->vte.rows[t->vte.cy][t->vte.cx].rune = ucs4;
+            t->vte.rows[t->vte.cy][t->vte.cx].fgcolor = t->vte.fgcolor;
+            t->vte.rows[t->vte.cy][t->vte.cx].bgcolor = t->vte.bgcolor;
+            t->vte.rows[t->vte.cy][t->vte.cx].attr = t->vte.attr;
             xkt_vte_movecursor(t, t->vte.cx+1, t->vte.cy);
             printf("%c", (char)ucs4);
         }
@@ -1030,6 +1131,7 @@ xkterm_render(struct xkterm *t, int width, int height, unsigned char *data)
     uint32_t rune;
     cell_bitmap_t *cell;
     uint32_t *d, color;
+    uint8_t attr, fgcolor, bgcolor;
 
     xkterm_clear(t, width, height, data);
 
@@ -1039,6 +1141,9 @@ xkterm_render(struct xkterm *t, int width, int height, unsigned char *data)
     for (posy = 0; posy < t->cellh; posy++) {
     for (posx = 0; posx < t->cellw; posx++) {
         rune = t->vte.rows[posy][posx].rune;
+        attr = t->vte.rows[posy][posx].attr;
+        fgcolor = t->vte.rows[posy][posx].fgcolor;
+        bgcolor = t->vte.rows[posy][posx].bgcolor;
 
         woff = t->conf->xkt.cell_width*posx;
         hoff = t->conf->xkt.cell_height*posy;
@@ -1046,17 +1151,29 @@ xkterm_render(struct xkterm *t, int width, int height, unsigned char *data)
         if (rune <= ' ')
             cell = get_glyph(' ', false);
         else
-            cell = get_glyph(rune, false);
+            cell = get_glyph(rune, attr & XKT_ATTR_BOLD);
+
+        color = colors[fgcolor];
         if (t->vte.cvis && posx == t->vte.cx && posy == t->vte.cy) {
-            color = colors[XKT_MAGENTA];
             for (j = 0; j < cell->ph->height; j++) {
             for (i = 0; i < cell->ph->width; i++) {
                 if ((i+j) & 0x1)
                     d[stride*(j+hoff) + i + woff] = color;
             }}
             color = colors[XKT_BLACK];
-        } else {
-            color = colors[XKT_FGCOLOR];
+        } else if ((bgcolor > 0 && bgcolor < 17) || attr & XKT_ATTR_RVID) {
+            if (attr & XKT_ATTR_RVID)
+                color = colors[fgcolor] & (colors[XKT_BGCOLOR] | 0xffffff);
+            else
+                color = colors[bgcolor] & (colors[XKT_BGCOLOR] | 0xffffff);
+            for (j = 0; j < t->conf->xkt.cell_height; j++) {
+            for (i = 0; i < t->conf->xkt.cell_width; i++) {
+                d[stride*(j+hoff) + i + woff] = color;
+            }}
+            if (attr & XKT_ATTR_RVID)
+                color = colors[bgcolor];
+            else
+                color = colors[bgcolor];
         }
 
         if (rune <= ' ')
