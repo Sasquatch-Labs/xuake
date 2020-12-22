@@ -1155,6 +1155,8 @@ xkterm_render(struct xkterm *t, int width, int height, unsigned char *data)
 
         color = colors[fgcolor];
         if (t->vte.cvis && posx == t->vte.cx && posy == t->vte.cy) {
+            if (fgcolor == XKT_BLACK)
+                color = colors[bgcolor];
             for (j = 0; j < cell->ph->height; j++) {
             for (i = 0; i < cell->ph->width; i++) {
                 if ((i+j) & 0x1)
@@ -1173,7 +1175,7 @@ xkterm_render(struct xkterm *t, int width, int height, unsigned char *data)
             if (attr & XKT_ATTR_RVID)
                 color = colors[bgcolor];
             else
-                color = colors[bgcolor];
+                color = colors[fgcolor];
         }
 
         if (rune <= ' ')
