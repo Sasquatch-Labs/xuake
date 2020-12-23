@@ -1,5 +1,6 @@
 //#define _POSIX_C_SOURCE 200112L
 #define _GNU_SOURCE
+#include <stdlib.h>
 #include <unistd.h>
 
 #include "xuake.h"
@@ -66,9 +67,12 @@ init_xkterm(struct xuake_server *server)
         widget_width = 80;
     }
 
-    server->xkt.width = w - widget_width;
-    server->xkt.height = h;
-    server->xkt.data = malloc(server->xkt.width*h*XUAKE_PIXEL_BYTES*sizeof(unsigned char));
+    server->xkt.pixw = w - widget_width;
+    server->xkt.pixh = h;
+    server->xkt.cellw = (w - widget_width)/cell_width;
+    server->xkt.cellh = h/cell_height;
+
+    server->xkt.data = malloc(server->xkt.pixw*h*XUAKE_PIXEL_BYTES*sizeof(unsigned char));
     if (!server->xkt.data) {
         printf("MALLOC FAILED");
         server->xkt.texture = NULL;
@@ -89,24 +93,17 @@ init_xkterm(struct xuake_server *server)
 
     server->xkt.child = p;
 
-    tsm_screen_new(&(server->xkt.tsm_screen), NULL, NULL);
-    tsm_screen_set_max_sb(server->xkt.tsm_screen, 4096);
-    tsm_screen_resize(server->xkt.tsm_screen, server->xkt.width/cell_width, h/cell_height);
+    xkt_vte_init(&server->xkt);
 
-    dirtysz = (server->xkt.width/cell_width)*(h/cell_height)*sizeof(bool);
-    server->xkt.cell_dirty = malloc(dirtysz);
-    memset(server->xkt.cell_dirty, 0, dirtysz);
-    printf("init_xkterm: resize [%d, %d] -> [%d, %d]\n", w, h, server->xkt.width/cell_width, h/cell_height);
-
-    tsm_vte_new(&(server->xkt.vte), server->xkt.tsm_screen, xkt_vte_write_cb, &server->xkt, NULL, NULL);
+    printf("init_xkterm: resize [%d, %d] -> [%d, %d]\n", w, h, server->xkt.cellw, server->xkt.cellh);
 
     xkterm_use_full_clear();
-    xkterm_clear_full(&server->xkt, server->xkt.width, server->xkt.height, server->xkt.data);
+    xkterm_clear_full(&server->xkt, server->xkt.pixw, server->xkt.pixh, server->xkt.data);
 
-    xkterm_render(&server->xkt, server->xkt.width, server->xkt.height, server->xkt.data);
+    xkterm_render(&server->xkt, server->xkt.pixw, server->xkt.pixh, server->xkt.data);
 
-    server->xkt.texture = wlr_texture_from_pixels(server->renderer, WL_SHM_FORMAT_ARGB8888, server->xkt.width*XUAKE_PIXEL_BYTES,
-        server->xkt.width, server->xkt.height, server->xkt.data);
+    server->xkt.texture = wlr_texture_from_pixels(server->renderer, WL_SHM_FORMAT_ARGB8888, server->xkt.pixw*XUAKE_PIXEL_BYTES,
+        server->xkt.pixw, server->xkt.pixh, server->xkt.data);
 
     server->widget.width = widget_width;
     if (widget_width) {

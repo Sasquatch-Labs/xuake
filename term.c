@@ -77,19 +77,19 @@ xkterm_key_input(struct xkterm *t, xkb_keysym_t sym, uint32_t modifiers)
 
     ucs4 = xkb_keysym_to_utf32(sym);
 
+    printf("xkterm_key_input keysym: %x, %x, %x\n", ucs4, sym, modifiers);
     if (ucs4 == 0) {
         //printf("invalid utf32: %d\n", sym);
         return;
     }
     //    ucs4 = TSM_VTE_INVALID;
-    printf("xkterm_key_input keysym: %x, %x, %x\n", ucs4, sym, modifiers);
 
 #ifdef XKTERM_HARD_KEY_REMAPS
     // XXX: This was to make my fingers comfortable as this started getting usable.
     // I probably need to co-opt the xk_bind_key() lua call to deal with this kind
     // of remapping.  Or just start my screen re-write and codify this stuff there.
     // See xkdefs.h to turn this off if it annoys you.
-    printf("checking for key remaps: %d %d\n", modifiers, ucs4);
+    //printf("checking for key remaps: %d %d\n", modifiers, ucs4);
     if (modifiers & XKT_MODIFIER_CTRL && modifiers & XKT_MODIFIER_ALT) {
         // drop through.
     } else if (modifiers & XKT_MODIFIER_CTRL) {
@@ -298,6 +298,34 @@ xkterm_resize(struct xkterm *t, uint32_t w, uint32_t h)
 
     free(oc);
     free(or);
+}
+
+void
+xkt_vte_init(struct xkterm *t)
+{
+    int i;
+
+    t->vte.ncells = t->cellw*t->cellh;
+    t->vte.cells = malloc(t->vte.ncells*sizeof(struct xkt_cell));
+    t->vte.rows = malloc(t->cellh*sizeof(struct xkt_cell *));
+    for (i = 0; i < t->vte.ncells; i++) {
+        t->vte.cells[i].rune = 0x20;
+        t->vte.cells[i].dirty = false;
+        t->vte.cells[i].fgcolor = XKT_FGCOLOR;
+        t->vte.cells[i].bgcolor = XKT_BGCOLOR;
+        t->vte.cells[i].attr = 0;
+    }
+    for (i = 0; i < t->cellh; i++)
+        t->vte.rows[i] = &t->vte.cells[i*t->cellw];
+    t->vte.cx = 0;
+    t->vte.cy = 0;
+    t->vte.cvis = true;
+    t->vte.state = 0;
+    t->vte.wtop = 0;
+    t->vte.wbot = t->cellh - 1;
+    t->vte.fgcolor = XKT_FGCOLOR;
+    t->vte.bgcolor = XKT_BGCOLOR;
+    t->vte.attr = 0;
 }
 
 #if 0
@@ -567,11 +595,11 @@ xkt_vte_movecursor(struct xkterm *t, int x, int y)
     }
 
     if (y == t->vte.cy + 1 && t->vte.cy == t->vte.wbot) {
-        printf("WRAP [%d, %d] -> [%d, %d]\n", t->vte.cx, t->vte.cy, x, y);
+        //printf("WRAP [%d, %d] -> [%d, %d]\n", t->vte.cx, t->vte.cy, x, y);
         xkt_vte_kill_line(t, t->vte.wtop, t->vte.wbot);
         y = t->vte.wbot;
     } else if (y == t->vte.cy - 1 && t->vte.cy == t->vte.wtop) {
-        printf("REV WRAP\n");
+        //printf("REV WRAP\n");
         xkt_vte_insert_line(t, t->vte.cy, t->vte.wbot);
         y = t->vte.wtop;
     } else if (y < 0)
@@ -834,7 +862,7 @@ xkt_vte_in_csi(struct xkterm *t, uint32_t ucs4)
         xkt_vte_setmode(t, t->vte.param[0], t->vte.qmark, false);
         break;
     case 'm': // set attributes
-		xkt_vte_setattr(t);
+        xkt_vte_setattr(t);
         break;
     case 'n': // status
         if (t->vte.n == 1 && t->vte.param[0] == 5) {
@@ -866,10 +894,10 @@ xkt_vte_in_csi(struct xkterm *t, uint32_t ucs4)
     default:
         return;
     }
-    printf("  CSI-%c [", (char)ucs4, t->vte.n);
-    for (i = 0; i < t->vte.n; i++)
-        printf("%d ", t->vte.param[i]);
-    printf("] [%d,%d]\n", t->vte.cx, t->vte.cy);
+    //printf("  CSI-%c [", (char)ucs4, t->vte.n);
+    //for (i = 0; i < t->vte.n; i++)
+        //printf("%d ", t->vte.param[i]);
+    //printf("] [%d,%d]\n", t->vte.cx, t->vte.cy);
 
     t->vte.state = XKT_ST_DEF;
 }
@@ -879,7 +907,7 @@ xkt_vte_in_escape(struct xkterm *t, uint32_t ucs4)
 {
     switch (ucs4) {
     case '[':
-        t->vte.state = XKT_ST_CSI;
+        t->vte.state = XKT_ST_CSIP;
         t->vte.n = 0;
         memset(t->vte.param, 0, XKT_NPAR*sizeof(unsigned int));
         memset(t->vte.pbuf, 0, XKT_PBUF_SZ);
@@ -920,7 +948,7 @@ xkt_vte_in_escape(struct xkterm *t, uint32_t ucs4)
         t->vte.state = XKT_ST_OSC;
         break;
     }
-    printf("  ESC-%c", (char)ucs4);
+    //printf("  ESC-%c", (char)ucs4);
 }
 
 void
@@ -931,19 +959,19 @@ xkt_vte_in_normal(struct xkterm *t, uint32_t ucs4)
     case '\n':
     case '\v':
     case '\f':
-        printf("  NL\n");
+        //printf("  NL\n");
         xkt_vte_movecursor(t, t->vte.cx, t->vte.cy+1);
         break;
     case '\r':
-        printf("  CR\n");
+        //printf("  CR\n");
         xkt_vte_movecursor(t, 0, t->vte.cy);
         break;
     case '\b':
-        printf("  BS\n");
+        //printf("  BS\n");
         xkt_vte_movecursor(t, t->vte.cx-1, t->vte.cy);
         break;
     case '\t':
-        printf("  TAB\n");
+        //printf("  TAB\n");
         xkt_vte_movecursor(t, 8 + (t->vte.cx & 0x7ffffff8), t->vte.cy);
         break;
     case 0x1b:
@@ -965,7 +993,7 @@ xkt_vte_in_normal(struct xkterm *t, uint32_t ucs4)
             t->vte.rows[t->vte.cy][t->vte.cx].bgcolor = t->vte.bgcolor;
             t->vte.rows[t->vte.cy][t->vte.cx].attr = t->vte.attr;
             xkt_vte_movecursor(t, t->vte.cx+1, t->vte.cy);
-            printf("%c", (char)ucs4);
+            //printf("%c", (char)ucs4);
         }
     }
 }
@@ -1041,6 +1069,7 @@ xkt_vte_input(struct xkterm *t, char *buf, int n)
                 break;
             case 'R':
             case '?':
+            case '\a': // Eat set window title code XXX: Eventually, 0/settitle and 52/copy need to be captured.
                 t->vte.state = XKT_ST_DEF;
                 break;
             }
@@ -1155,6 +1184,7 @@ xkterm_render(struct xkterm *t, int width, int height, unsigned char *data)
 
         color = colors[fgcolor];
         if (t->vte.cvis && posx == t->vte.cx && posy == t->vte.cy) {
+            // XXX: Bit of a hack.
             if (fgcolor == XKT_BLACK)
                 color = colors[bgcolor];
             for (j = 0; j < cell->ph->height; j++) {

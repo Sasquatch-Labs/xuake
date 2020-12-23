@@ -1,3 +1,4 @@
+#include <stdlib.h>
 #include "xuake.h"
 
 static void

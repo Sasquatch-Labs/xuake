@@ -1,4 +1,5 @@
 #define _GNU_SOURCE
+#include <stdlib.h>
 #include <unistd.h>
 
 #include "xuake.h"
@@ -220,10 +221,10 @@ output_frame(struct wl_listener *listener, void *data)
     if (output->wlr_output == first_out && output->server->xkt_mode) {
         process_keyboard_repeats(output->server);
         if (xkterm_check(&output->server->xkt)) {
-            xkterm_render(&output->server->xkt, output->server->xkt.width, output->server->xkt.height,
+            xkterm_render(&output->server->xkt, output->server->xkt.pixw, output->server->xkt.pixh,
                 output->server->xkt.data);
-            wlr_texture_write_pixels(output->server->xkt.texture, XUAKE_PIXEL_BYTES*output->server->xkt.width,
-                output->server->xkt.width, output->server->xkt.height,
+            wlr_texture_write_pixels(output->server->xkt.texture, XUAKE_PIXEL_BYTES*output->server->xkt.pixw,
+                output->server->xkt.pixw, output->server->xkt.pixh,
                 0, 0, 0, 0, output->server->xkt.data);
         }
         if (render_widgets(output->server->widget.width, output->server->widget.height, output->server->widget.data))
@@ -306,7 +307,7 @@ output_frame(struct wl_listener *listener, void *data)
     if (output->wlr_output == first_out && output->server->xkt_mode) {
         wlr_render_texture(renderer, output->server->xkt.texture, output->wlr_output->transform_matrix, 0, 0, 1.0);
         wlr_render_texture(renderer, output->server->widget.texture, output->wlr_output->transform_matrix,
-            output->server->xkt.width, 0, 1.0);
+            output->server->xkt.pixw, 0, 1.0);
     }
 
     /* Hardware cursors are rendered by the GPU on a separate plane, and can be

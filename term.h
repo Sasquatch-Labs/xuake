@@ -78,6 +78,7 @@ exec_startcmd(char *cmd);
 
 pid_t xkterm_forkpty(struct xkterm *t);
 void xkterm_resize(struct xkterm *t, uint32_t w, uint32_t h);
+void xkt_vte_init(struct xkterm *t);
 //void xkt_vte_write_cb(struct tsm_vte *vte, const char *u8, size_t len, void *data);
 void xkterm_key_input(struct xkterm *t, xkb_keysym_t sym, uint32_t modifiers);
 bool xkterm_check(struct xkterm *t);

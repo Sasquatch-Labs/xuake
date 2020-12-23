@@ -476,7 +476,6 @@ init_xkterm(void)
     xkt.pixh = height;
     xkt.cellw = width/xkt.conf->xkt.cell_width;
     xkt.cellh = height/xkt.conf->xkt.cell_height;
-    xkt.vte.ncells = xkt.cellw*xkt.cellh;
     xkt.data = malloc(width*height*XUAKE_PIXEL_BYTES*sizeof(unsigned char));
     xkt.texture = NULL;
     if (!xkt.data) {
@@ -503,26 +502,8 @@ init_xkterm(void)
     xkt.child = p;
 
     //xkterm_use_full_clear();
-    xkt.vte.cells = malloc(xkt.vte.ncells*sizeof(struct xkt_cell));
-    xkt.vte.rows = malloc(xkt.cellh*sizeof(struct xkt_cell *));
-    for (i = 0; i < xkt.vte.ncells; i++) {
-        xkt.vte.cells[i].rune = 0x20;
-        xkt.vte.cells[i].dirty = false;
-		xkt.vte.cells[i].fgcolor = XKT_FGCOLOR;
-		xkt.vte.cells[i].bgcolor = XKT_BGCOLOR;
-		xkt.vte.cells[i].attr = 0;
-    }
-    for (i = 0; i < xkt.cellh; i++)
-        xkt.vte.rows[i] = &xkt.vte.cells[i*xkt.cellw];
-    xkt.vte.cx = 0;
-    xkt.vte.cy = 0;
-    xkt.vte.cvis = true;
-    xkt.vte.state = 0;
-    xkt.vte.wtop = 0;
-    xkt.vte.wbot = xkt.cellh - 1;
-	xkt.vte.fgcolor = XKT_FGCOLOR;
-	xkt.vte.bgcolor = XKT_BGCOLOR;
-	xkt.vte.attr = 0;
+
+    xkt_vte_init(&xkt);
 
     xkterm_clear_full(&xkt, xkt.pixw, xkt.pixh, xkt.data);
 }

@@ -1,3 +1,4 @@
+#include <stdlib.h>
 #include "xuake.h"
 #include "xklua.h"
 #include "limits.h"

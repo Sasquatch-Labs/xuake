@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdlib.h>
 
 #include "xuake.h"
 #include <wlr/types/wlr_primary_selection.h>
