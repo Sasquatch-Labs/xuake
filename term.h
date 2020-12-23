@@ -58,6 +58,7 @@ struct xkt_vte {
 	uint8_t bgcolor;
 	uint8_t attr;
 	bool decckm;
+	bool wrap;
 };
 
 struct xkterm {

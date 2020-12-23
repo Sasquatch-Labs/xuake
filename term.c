@@ -378,6 +378,7 @@ xkt_vte_init(struct xkterm *t)
     t->vte.bgcolor = XKT_BGCOLOR;
     t->vte.attr = 0;
     t->vte.decckm = false;
+    t->vte.wrap = false;
 }
 
 #if 0
@@ -639,7 +640,7 @@ xkt_vte_movecursor(struct xkterm *t, int x, int y)
 {
     if (x < 0)
         x = 0;
-    else if (x == t->cellw && x == t->vte.cx + 1) {
+    else if (t->vte.wrap && x == t->cellw && x == t->vte.cx + 1) {
         x = 0;
         y++;
     } else if (x >= t->cellw) {
@@ -751,16 +752,18 @@ xkt_vte_setattr(struct xkterm *t)
 void
 xkt_vte_setmode(struct xkterm *t, int mode, bool private, bool set)
 {
-    switch (mode) {
-    case 1:
-        if (!private) break;
-        t->vte.decckm = set;
-        break;
-    case 25: // Cursor Visible
-        if (!private) break;
-        t->vte.cvis = set;
-        break;
-    }
+    if (private)
+        switch (mode) {
+        case 1:
+            t->vte.decckm = set;
+            break;
+        case 7:
+            t->vte.wrap = set;
+            break;
+        case 25: // Cursor Visible
+            t->vte.cvis = set;
+            break;
+        }
 }
 
 void
@@ -1041,13 +1044,13 @@ xkt_vte_in_normal(struct xkterm *t, uint32_t ucs4)
         break;
     default:
         if (ucs4 >= ' ') {
-            //xkt_vte_checkwrap(t);
-
             // XXX: Check for double width cells!
-            t->vte.rows[t->vte.cy][t->vte.cx].rune = ucs4;
-            t->vte.rows[t->vte.cy][t->vte.cx].fgcolor = t->vte.fgcolor;
-            t->vte.rows[t->vte.cy][t->vte.cx].bgcolor = t->vte.bgcolor;
-            t->vte.rows[t->vte.cy][t->vte.cx].attr = t->vte.attr;
+            if (t->vte.cx < t->cellw) {
+                t->vte.rows[t->vte.cy][t->vte.cx].rune = ucs4;
+                t->vte.rows[t->vte.cy][t->vte.cx].fgcolor = t->vte.fgcolor;
+                t->vte.rows[t->vte.cy][t->vte.cx].bgcolor = t->vte.bgcolor;
+                t->vte.rows[t->vte.cy][t->vte.cx].attr = t->vte.attr;
+            }
             xkt_vte_movecursor(t, t->vte.cx+1, t->vte.cy);
             //printf("%c", (char)ucs4);
         }
