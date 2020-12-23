@@ -71,19 +71,13 @@ void
 xkterm_key_input(struct xkterm *t, xkb_keysym_t sym, uint32_t modifiers)
 {
     uint32_t ucs4;
-    char sb[6];
-    int i = 0;
+    char sb[16];
+    int i = 0, n;
     bool handled = false;
 
     ucs4 = xkb_keysym_to_utf32(sym);
 
-    printf("xkterm_key_input keysym: %x, %x, %x\n", ucs4, sym, modifiers);
-    if (ucs4 == 0) {
-        //printf("invalid utf32: %d\n", sym);
-        return;
-    }
-    //    ucs4 = TSM_VTE_INVALID;
-
+    //printf("xkterm_key_input keysym: %x, %x, %x\n", ucs4, sym, modifiers);
 #ifdef XKTERM_HARD_KEY_REMAPS
     // XXX: This was to make my fingers comfortable as this started getting usable.
     // I probably need to co-opt the xk_bind_key() lua call to deal with this kind
@@ -112,6 +106,63 @@ xkterm_key_input(struct xkterm *t, xkb_keysym_t sym, uint32_t modifiers)
     if (modifiers & XKT_MODIFIER_ALT) {
         sb[i++] = '\x1b';
         modifiers &= ~XKT_MODIFIER_ALT;
+    }
+
+    if (ucs4 == 0) {
+        switch (sym) {
+        case XKB_KEY_Home:
+            n = 'H';
+            goto gensb;
+        case XKB_KEY_End:
+            n = 'F';
+            goto gensb;
+        case XKB_KEY_Up:
+            n = 'A';
+            goto gensb;
+        case XKB_KEY_Down:
+            n = 'B';
+            goto gensb;
+        case XKB_KEY_Right:
+            n = 'C';
+            goto gensb;
+        case XKB_KEY_Left:
+            n = 'D';
+        gensb:
+            sb[i++] = '\x1b';
+            if (t->vte.decckm)
+                sb[i++] = 'O';
+            else
+                sb[i++] = '[';
+            sb[i++] = n;
+            break;
+        case XKB_KEY_Page_Up:
+            sb[i++] = '\x1b'; sb[i++] = '['; sb[i++] = '5'; sb[i++] = '~';
+            break;
+        case XKB_KEY_Page_Down:
+            sb[i++] = '\x1b'; sb[i++] = '['; sb[i++] = '6'; sb[i++] = '~';
+            break;
+        case XKB_KEY_F1: case XKB_KEY_F2: case XKB_KEY_F3: case XKB_KEY_F4:
+            sb[i++] = '\x1b'; sb[i++] = 'O';
+            n = (sym - XKB_KEY_F1);
+            sb[i++] = 'P' + n;
+            break;
+        case XKB_KEY_F5: case XKB_KEY_F6: case XKB_KEY_F7: case XKB_KEY_F8:
+            sb[i++] = '\x1b'; sb[i++] = '['; sb[i++] = '1';
+            n = (sym - XKB_KEY_F5);
+            sb[i++] = '5' + n;
+            sb[i++] = '~';
+            break;
+        case XKB_KEY_F9: case XKB_KEY_F10: case XKB_KEY_F11: case XKB_KEY_F12:
+            sb[i++] = '\x1b'; sb[i++] = '['; sb[i++] = '2';
+            n = (sym - XKB_KEY_F5);
+            sb[i++] = '0' + n;
+            sb[i++] = '~';
+            break;
+        default:
+            return;
+        }
+        write(t->pty, sb, i);
+        return;
     }
 
     if (modifiers == 0 || modifiers == XKT_MODIFIER_SHIFT) {
@@ -326,6 +377,7 @@ xkt_vte_init(struct xkterm *t)
     t->vte.fgcolor = XKT_FGCOLOR;
     t->vte.bgcolor = XKT_BGCOLOR;
     t->vte.attr = 0;
+    t->vte.decckm = false;
 }
 
 #if 0
@@ -700,6 +752,10 @@ void
 xkt_vte_setmode(struct xkterm *t, int mode, bool private, bool set)
 {
     switch (mode) {
+    case 1:
+        if (!private) break;
+        t->vte.decckm = set;
+        break;
     case 25: // Cursor Visible
         if (!private) break;
         t->vte.cvis = set;
