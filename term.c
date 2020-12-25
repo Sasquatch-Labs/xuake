@@ -236,7 +236,7 @@ exec_startcmd(char *cmd)
 
     prog = strdup(args[0]);
 
-    setenv("TERM", "xterm-color", 1);
+    setenv("TERM", "xkterm", 1);
     execvp(prog, args);
 }
 
@@ -378,7 +378,7 @@ xkt_vte_init(struct xkterm *t)
     t->vte.bgcolor = XKT_BGCOLOR;
     t->vte.attr = 0;
     t->vte.decckm = false;
-    t->vte.wrap = false;
+    t->vte.wrap = true;
 }
 
 #if 0
