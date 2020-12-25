@@ -1013,8 +1013,6 @@ xkt_vte_in_escape(struct xkterm *t, uint32_t ucs4)
 void
 xkt_vte_in_normal(struct xkterm *t, uint32_t ucs4)
 {
-    int i, nts;
-
     switch (ucs4) {
     case '\n':
     case '\v':
@@ -1032,22 +1030,7 @@ xkt_vte_in_normal(struct xkterm *t, uint32_t ucs4)
         break;
     case '\t':
         //printf("  TAB\n");
-        nts = 8 + (t->vte.cx & 0x7ffffff8);
-#if 0
-        // XXX: This was before I figured out tmux was using \e[X to clear out whitespace
-        // when swapping screens.  I think this is incorrect code.  Going to commit-then-excise.
-        if (nts >= t->cellw) {
-            xkt_vte_movecursor(t, 0, t->vte.cy + 1);
-            break;
-        }
-        for (i = t->vte.cx; i < nts; i++) {
-            t->vte.rows[t->vte.cy][i].rune = ' ';
-            t->vte.rows[t->vte.cy][i].fgcolor = t->vte.fgcolor;
-            t->vte.rows[t->vte.cy][i].bgcolor = t->vte.bgcolor;
-            t->vte.rows[t->vte.cy][i].attr = t->vte.attr;
-        }
-#endif
-        xkt_vte_movecursor(t, nts, t->vte.cy);
+        xkt_vte_movecursor(t, 8 + (t->vte.cx & 0x7ffffff8), t->vte.cy);
         break;
     case 0x1b:
         t->vte.state = XKT_ST_ESC;

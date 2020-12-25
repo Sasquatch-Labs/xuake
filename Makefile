@@ -99,6 +99,7 @@ install: xuake xkterm xk
 	cp xkterm $(DESTDIR)$(PREFIX)/bin/xkterm
 	chown root.root $(DESTDIR)$(PREFIX)/bin/xkterm
 	cp xk $(DESTDIR)$(PREFIX)/bin/xk
+	tic -sx xkt.info
 
 clean:
 	rm -f xuake xk xkterm $(WAYLAND_GENSRC) $(XUAKE_OBJFILES) $(XKTERM_OBJFILES) $(XK_OBJFILES)
