@@ -26,7 +26,8 @@ enum xkt_vte_state {
     XKT_ST_CSIP = 2,
     XKT_ST_CSI = 3,
     XKT_ST_IGN = 4,
-    XKT_ST_OSC = 5
+    XKT_ST_OSC = 5,
+    XKT_ST_UTF = 6
 };
 
 static uint32_t colors[18] = {
@@ -866,7 +867,7 @@ xkt_vte_in_csi(struct xkterm *t, uint32_t ucs4)
             } else if (t->vte.cx < 0) {
                 break;
             } else {
-                xkt_vte_partial_clearline(t, t->vte.cy, 0, t->vte.cx);
+                xkt_vte_partial_clearline(t, t->vte.cy, 0, t->vte.cx + 1); // partial_clear doesn't clear the last cell
             }
         } else if (t->vte.n == 1 && t->vte.param[0] == 2) {
             xkt_vte_clearline(t, t->vte.cy);
@@ -1051,7 +1052,6 @@ xkt_vte_in_normal(struct xkterm *t, uint32_t ucs4)
                 t->vte.rows[t->vte.cy][t->vte.cx].attr = t->vte.attr;
             }
             xkt_vte_movecursor(t, t->vte.cx+1, t->vte.cy);
-            //printf("%c", (char)ucs4);
         }
     }
 }
@@ -1064,32 +1064,40 @@ xkt_vte_input(struct xkterm *t, char *buf, int n)
     char *p = buf;
 
     while (p - buf < n) {
-        if ((*p & 0xf8) == 0xf0) { // 4 byte sequence
-            if ((p[1] & 0xc0) == 0x80 &&
-                (p[2] & 0xc0) == 0x80 &&
-                (p[3] & 0xc0) == 0x80) {
-                ucs4 = (p[0] & 0x07) << 18 | (p[1] & 0x3f) << 12 | (p[2] & 0x3f) << 6 | p[3] & 0x3f;
-                p += 4;
-            } else {
-                p++; i++; continue;
+        if (t->vte.state != XKT_ST_UTF && *p & 0x80) {
+            t->vte.usavstate = t->vte.state;
+            t->vte.state = XKT_ST_UTF;
+            if ((*p & 0xf8) == 0xf0) { // 4 byte sequence
+                t->vte.ucs4 = (*p++ & 0x07) << 18;
+                t->vte.un = 3;
+                continue;
+            } else if ((*p & 0xf0) == 0xe0) { // 3 byte sequence
+                t->vte.ucs4 = (*p++ & 0x0f) << 12;
+                t->vte.un = 2;
+                continue;
+            } else if ((*p & 0xe0) == 0xc0) { // 2 byte sequence
+                t->vte.ucs4 = (*p++ & 0x01f) << 6;
+                t->vte.un = 1;
+                continue;
+            } else { // illegal byte sequence
+                t->vte.ucs4 = 0xfffd;
+                t->vte.state = t->vte.usavstate;
+                p++;
             }
-        } else if ((*p & 0xf0) == 0xe0) { // 3 byte sequence
-            if ((p[1] & 0xc0) == 0x80 &&
-                (p[2] & 0xc0) == 0x80) {
-                ucs4 = (p[0] & 0x0f) << 12 | (p[1] & 0x3f) << 6 | p[2] & 0x3f;
-                p += 3;
+        } else if (t->vte.state == XKT_ST_UTF) {
+            t->vte.un--;
+            if ((*p & 0xc0) == 0x80) {
+                t->vte.ucs4 |= (*p & 0x3f) << (6*t->vte.un);
             } else {
-                p++; continue;
+                t->vte.ucs4 = 0xfffd;
+                t->vte.un = 0;
             }
-        } else if ((*p & 0xe0) == 0xc0) { // 2 byte sequence
-            if ((p[1] & 0xc0) == 0x80) {
-                ucs4 = (p[0] & 0x1f) << 6 | p[1] & 0x3f;
-                p += 2;
-            } else {
-                p++; continue;
-            }
-        } else if (*p & 0x80) { // illegal byte sequence
-            p++; continue;
+            p++;
+            if (t->vte.un <= 0) {
+                t->vte.state = t->vte.usavstate;
+                ucs4 = t->vte.ucs4;
+            } else
+                continue;
         } else {
             ucs4 = *p++;
         }

@@ -28,16 +28,16 @@
 #define XKT_NPAR 16
 
 enum {
-	XKT_ATTR_BOLD = 1,
-	XKT_ATTR_BLINK = 2,
-	XKT_ATTR_RVID = 4
+    XKT_ATTR_BOLD = 1,
+    XKT_ATTR_BLINK = 2,
+    XKT_ATTR_RVID = 4
 };
 
 struct xkt_cell {
     uint32_t rune;
-	uint8_t fgcolor;
-	uint8_t bgcolor;
-	uint8_t attr;
+    uint8_t fgcolor;
+    uint8_t bgcolor;
+    uint8_t attr;
     bool dirty;
 };
 
@@ -48,17 +48,20 @@ struct xkt_vte {
     unsigned int param[XKT_NPAR];
     char *p;
     char pbuf[XKT_PBUF_SZ];
+    uint32_t ucs4;
+    int un;
+    unsigned int usavstate;
     int ncells;
     struct xkt_cell *cells;
     struct xkt_cell **rows;
     int cx, cy;
     bool cvis;
     int wtop, wbot;
-	uint8_t fgcolor;
-	uint8_t bgcolor;
-	uint8_t attr;
-	bool decckm;
-	bool wrap;
+    uint8_t fgcolor;
+    uint8_t bgcolor;
+    uint8_t attr;
+    bool decckm;
+    bool wrap;
 };
 
 struct xkterm {
