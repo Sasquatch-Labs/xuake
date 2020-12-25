@@ -596,6 +596,15 @@ xklua_load_config(struct xkconfig *conf, char *filename)
         if (lua_isstring(L, 1))
             conf->xkt.cmd = strdup(lua_tostring(L, 1));
         lua_pop(L, 1);
+#ifndef XKTERM_BUILD
+        lua_getglobal(L, "xuake_cmd");
+        if (lua_isstring(L, 1)) {
+            if (conf->xkt.cmd)
+                free(conf->xkt.cmd);
+            conf->xkt.cmd = strdup(lua_tostring(L, 1));
+        }
+        lua_pop(L, 1);
+#endif // XKTERM_BUILD
     }
 
     lua_getglobal(L, "xkt_respawn");
