@@ -612,18 +612,6 @@ xklua_load_config(struct xkconfig *conf, char *filename)
         conf->xkt.respawn = lua_toboolean(L, 1);
     lua_pop(L, 1);
 
-    lua_getglobal(L, "xkt_fgcolor");
-    tmpi = (uint32_t)(lua_tointegerx(L, 1, &convscs) & 0xffffffff);
-    if (convscs)
-        conf->xkt.fgcolor = tmpi;
-    lua_pop(L, 1);
-
-    lua_getglobal(L, "xkt_bgcolor");
-    tmpi = (uint32_t)(lua_tointegerx(L, 1, &convscs) & 0xffffffff);
-    if (convscs)
-        conf->xkt.bgcolor = tmpi;
-    lua_pop(L, 1);
-
     lua_getglobal(L, "xk_batteries");
     tmpi = (uint32_t)(lua_tointegerx(L, 1, &convscs) & 0xffffffff);
     if (convscs)

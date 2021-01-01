@@ -30,26 +30,30 @@ enum xkt_vte_state {
     XKT_ST_UTF = 6
 };
 
-static uint32_t colors[18] = {
-    0xff000000, // COLOR_BLACK, X11 black
-    0xffcd0000, // COLOR_RED, X11 red3
-    0xff00cd00, // COLOR_GREEN, X11 green3
-    0xffcdcd00, // COLOR_YELLOW, X11 yellow3
-    0xff0000cd, // COLOR_BLUE, X11 blue3
-    0xffcd00cd, // COLOR_MAGENTA, X11 magenta3
-    0xff00cdcd, // COLOR_CYAN, X11 cyan3
-    0xffe5e5e5, // COLOR_LIGHT_GREY, X11 grey90
-    0xff4d4d4d, // COLOR_DARK_GREY, X11 grey30
-    0xffff0000, // COLOR_LIGHT_RED, X11 red
-    0xff00ff00, // COLOR_LIGHT_GREEN, X11 green
-    0xffffff00, // COLOR_LIGHT_YELLOW, X11 yellow
-    0xff0000ff, // COLOR_LIGHT_BLUE, X11 blue
-    0xffff00ff, // COLOR_LIGHT_MAGENTA, X11 magenta
-    0xff00ffff, // COLOR_LIGHT_CYAN, X11 cyan
-    0xffffffff, // COLOR_WHITE, X11 white
-    0xffffffff, // COLOR_FOREGROUND, X11, white
-    0xbe000000  // COLOR_BACKGROUND X11 black
+static uint32_t colors[16] = {
+    0x000000, // COLOR_BLACK, X11 black
+    0xcd0000, // COLOR_RED, X11 red3
+    0x00cd00, // COLOR_GREEN, X11 green3
+    0xcdcd00, // COLOR_YELLOW, X11 yellow3
+    0x0000cd, // COLOR_BLUE, X11 blue3
+    0xcd00cd, // COLOR_MAGENTA, X11 magenta3
+    0x00cdcd, // COLOR_CYAN, X11 cyan3
+    0xe5e5e5, // COLOR_LIGHT_GREY, X11 grey90
+    0x4d4d4d, // COLOR_DARK_GREY, X11 grey30
+    0xff0000, // COLOR_LIGHT_RED, X11 red
+    0x00ff00, // COLOR_LIGHT_GREEN, X11 green
+    0xffff00, // COLOR_LIGHT_YELLOW, X11 yellow
+    0x0000ff, // COLOR_LIGHT_BLUE, X11 blue
+    0xff00ff, // COLOR_LIGHT_MAGENTA, X11 magenta
+    0x00ffff, // COLOR_LIGHT_CYAN, X11 cyan
+    0xffffff, // COLOR_WHITE, X11 white
 };
+
+static uint8_t fgalpha = 0xff;
+static uint8_t bgalpha = 0xbf;
+
+int fgcolor = XKT_LIGHT_GREY;
+int bgcolor = XKT_BLACK;
 
 //void (* xkterm_clear)(struct xkterm *t, int w, int h, unsigned char *data) = xkterm_clear_dirty;
 void (* xkterm_clear)(struct xkterm *t, int w, int h, unsigned char *data) = xkterm_clear_full;
@@ -58,7 +62,7 @@ void
 xkterm_set_colors(uint32_t *new_colors)
 {
     int i;
-    for (i = 0; i < 18; i++)
+    for (i = 0; i < 16; i++)
         colors[i] = new_colors[i];
 }
 
@@ -314,8 +318,8 @@ xkterm_resize(struct xkterm *t, uint32_t w, uint32_t h)
     for (i = 0; i < t->vte.ncells; i++) {
         t->vte.cells[i].rune = 0x20;
         t->vte.cells[i].dirty = true;
-        t->vte.cells[i].fgcolor = XKT_FGCOLOR;
-        t->vte.cells[i].bgcolor = XKT_BGCOLOR;
+        t->vte.cells[i].fgcolor = fgcolor;
+        t->vte.cells[i].bgcolor = bgcolor;
         t->vte.cells[i].attr = 0;
     }
     for (i = 0; i < t->cellh; i++)
@@ -363,8 +367,8 @@ xkt_vte_init(struct xkterm *t)
     for (i = 0; i < t->vte.ncells; i++) {
         t->vte.cells[i].rune = 0x20;
         t->vte.cells[i].dirty = false;
-        t->vte.cells[i].fgcolor = XKT_FGCOLOR;
-        t->vte.cells[i].bgcolor = XKT_BGCOLOR;
+        t->vte.cells[i].fgcolor = fgcolor;
+        t->vte.cells[i].bgcolor = bgcolor;
         t->vte.cells[i].attr = 0;
     }
     for (i = 0; i < t->cellh; i++)
@@ -375,8 +379,8 @@ xkt_vte_init(struct xkterm *t)
     t->vte.state = 0;
     t->vte.wtop = 0;
     t->vte.wbot = t->cellh - 1;
-    t->vte.fgcolor = XKT_FGCOLOR;
-    t->vte.bgcolor = XKT_BGCOLOR;
+    t->vte.fgcolor = fgcolor;
+    t->vte.bgcolor = bgcolor;
     t->vte.attr = 0;
     t->vte.decckm = false;
     t->vte.wrap = true;
@@ -499,8 +503,8 @@ xkt_vte_clear(struct xkterm *t)
     for (i = 0; i < t->vte.ncells; i++) {
         t->vte.cells[i].rune = 0x20;
         t->vte.cells[i].dirty = true;
-        t->vte.cells[i].fgcolor = XKT_FGCOLOR;
-        t->vte.cells[i].bgcolor = XKT_BGCOLOR;
+        t->vte.cells[i].fgcolor = fgcolor;
+        t->vte.cells[i].bgcolor = bgcolor;
         t->vte.cells[i].attr = 0;
     }
 }
@@ -513,8 +517,8 @@ xkt_vte_partial_clearline(struct xkterm *t, int row, int col0, int col1)
     for (i = col0; i < col1; i++) {
         t->vte.rows[row][i].rune = 0x20;
         t->vte.rows[row][i].dirty = true;
-        t->vte.rows[row][i].fgcolor = XKT_FGCOLOR;
-        t->vte.rows[row][i].bgcolor = XKT_BGCOLOR;
+        t->vte.rows[row][i].fgcolor = fgcolor;
+        t->vte.rows[row][i].bgcolor = bgcolor;
         t->vte.rows[row][i].attr = 0;
     }
 }
@@ -677,8 +681,8 @@ xkt_vte_setattr(struct xkterm *t)
     int i;
 
     if (t->vte.n == 0) {
-        t->vte.fgcolor = XKT_FGCOLOR;
-        t->vte.bgcolor = XKT_BGCOLOR;
+        t->vte.fgcolor = fgcolor;
+        t->vte.bgcolor = bgcolor;
         t->vte.attr = 0;
         return;
     }
@@ -689,8 +693,8 @@ xkt_vte_setattr(struct xkterm *t)
     for (i = 0; i < t->vte.n; i++) {
         switch (t->vte.param[i]) {
         case 0:
-            t->vte.fgcolor = XKT_FGCOLOR;
-            t->vte.bgcolor = XKT_BGCOLOR;
+            t->vte.fgcolor = fgcolor;
+            t->vte.bgcolor = bgcolor;
             t->vte.attr = 0;
             break;
         case 1:
@@ -710,11 +714,11 @@ xkt_vte_setattr(struct xkterm *t)
             break;
         case 22:
             t->vte.attr = 0;
-            t->vte.bgcolor = XKT_BGCOLOR;
+            t->vte.bgcolor = bgcolor;
             if (t->vte.fgcolor > XKT_LIGHT_GREY)
                 t->vte.fgcolor -= 8;
-            if (t->vte.fgcolor == 0)
-                t->vte.fgcolor = XKT_FGCOLOR;
+            if (t->vte.fgcolor == t->vte.bgcolor)
+                t->vte.fgcolor = fgcolor;
             break;
         case 24:
             t->vte.attr &= ~XKT_ATTR_BOLD;
@@ -738,7 +742,7 @@ xkt_vte_setattr(struct xkterm *t)
                 i += 2;
             break;
         case 39:
-            t->vte.fgcolor = XKT_FGCOLOR;
+            t->vte.fgcolor = fgcolor;
             break;
         case 40: case 41: case 42: case 43:
         case 44: case 45: case 46: case 47:
@@ -1188,11 +1192,12 @@ xkterm_check(struct xkterm *t)
 void
 xkterm_clear_full(struct xkterm *t, int w, int h, unsigned char *data)
 {
-    uint32_t *d, i;
+    uint32_t *d, i, color;
 
+    color = colors[bgcolor] | (bgalpha << 24);
     d = (uint32_t *)data;
     for (i = 0; i < w*h; i++)
-        d[i] = colors[XKT_BGCOLOR];
+        d[i] = color;
 }
 
 #if 0
@@ -1259,30 +1264,30 @@ xkterm_render(struct xkterm *t, int width, int height, unsigned char *data)
         else
             cell = get_glyph(rune, attr & XKT_ATTR_BOLD);
 
-        color = colors[fgcolor];
+        color = colors[fgcolor] | (fgalpha << 24);
         if (t->vte.cvis && posx == t->vte.cx && posy == t->vte.cy) {
             // XXX: Bit of a hack.
             if (fgcolor == XKT_BLACK)
-                color = colors[bgcolor];
+                color = colors[bgcolor] | (fgalpha << 24);
             for (j = 0; j < cell->ph->height; j++) {
             for (i = 0; i < cell->ph->width; i++) {
                 if ((i+j) & 0x1)
                     d[stride*(j+hoff) + i + woff] = color;
             }}
-            color = colors[XKT_BLACK];
-        } else if ((bgcolor > 0 && bgcolor < 17) || attr & XKT_ATTR_RVID) {
+            color = colors[XKT_BLACK] | (fgalpha << 24);
+        } else if ((bgcolor > 0 && bgcolor < 16) || attr & XKT_ATTR_RVID) {
             if (attr & XKT_ATTR_RVID)
-                color = colors[fgcolor] & (colors[XKT_BGCOLOR] | 0xffffff);
+                color = colors[fgcolor] | (bgalpha << 24);
             else
-                color = colors[bgcolor] & (colors[XKT_BGCOLOR] | 0xffffff);
+                color = colors[bgcolor] | (bgalpha << 24);
             for (j = 0; j < t->conf->xkt.cell_height; j++) {
             for (i = 0; i < t->conf->xkt.cell_width; i++) {
                 d[stride*(j+hoff) + i + woff] = color;
             }}
             if (attr & XKT_ATTR_RVID)
-                color = colors[bgcolor];
+                color = colors[bgcolor] | (fgalpha << 24);
             else
-                color = colors[fgcolor];
+                color = colors[fgcolor] | (fgalpha << 24);
         }
 
         if (rune <= ' ')

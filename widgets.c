@@ -31,7 +31,7 @@ init_widgets(struct xuake_server *server)
     data = malloc(XUAKE_PIXEL_BYTES*width*height*sizeof(unsigned char));
     d = (uint32_t *)data;
     for (i = 0; i < width*height; i++)
-        d[i] = xkt_colors[XKT_BGCOLOR];
+        d[i] = xkt_colors[XKT_BLACK] | 0xbf000000;
 
     init_clock(width);
     init_batteries(server->conf.batteries, width);
@@ -68,19 +68,19 @@ render_widgets(int width, int height, unsigned char *data)
             for (i = 0; i < cell->w; i++) {
                 switch (cell->bm[j*cell->w+i]) {
                 case 1:
-                    color = xkt_colors[XKT_FGCOLOR];
+                    color = xkt_colors[XKT_LIGHT_GREY] | 0xff000000;
                     break;
                 case 2:
-                    color = xkt_colors[XKT_DARK_GREY];
+                    color = xkt_colors[XKT_DARK_GREY] | 0xff000000;
                     break;
                 case 3:
-                    color = xkt_colors[XKT_YELLOW];
+                    color = xkt_colors[XKT_YELLOW] | 0xff000000;
                     break;
                 case 4:
-                    color = xkt_colors[XKT_LIGHT_RED];
+                    color = xkt_colors[XKT_LIGHT_RED] | 0xff000000;
                     break;
                 default:
-                    color = xkt_colors[XKT_BGCOLOR];
+                    color = xkt_colors[XKT_BLACK] | 0xbf000000;
                     break;
                 }
                 d[width*(j+hoff) + i] = color;
@@ -91,7 +91,7 @@ render_widgets(int width, int height, unsigned char *data)
         hoff = height;
 
     cell = clock_draw();
-    color = xkt_colors[XKT_FGCOLOR];
+    color = xkt_colors[XKT_LIGHT_GREY] | 0xff000000;
     hoff -= cell->h;
 
     for (j = 0; j < cell->h; j++) {
@@ -104,7 +104,7 @@ render_widgets(int width, int height, unsigned char *data)
                 cc[width*(j+hoff) + i].g = ((cc[width*(j+hoff) + i].g * cell->bm[j*cell->w+i]) / 255) & 0xff;
                 cc[width*(j+hoff) + i].b = ((cc[width*(j+hoff) + i].b * cell->bm[j*cell->w+i]) / 255) & 0xff;
             } else {
-                d[width*(j+hoff) + i] = xkt_colors[XKT_BGCOLOR];
+                d[width*(j+hoff) + i] = xkt_colors[XKT_BLACK] | 0xbf000000;
             }
         }
     }

@@ -21,9 +21,6 @@
 #define XKT_LIGHT_CYAN 14
 #define XKT_WHITE 15
 
-#define XKT_FGCOLOR 16
-#define XKT_BGCOLOR 17
-
 #define XKT_PBUF_SZ 32
 #define XKT_NPAR 16
 

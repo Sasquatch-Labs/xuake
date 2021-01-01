@@ -21,27 +21,24 @@ xk_bind_key("win_to_ws", XK_MOD_ALT|XK_MOD_SHIFT, '$', 3)
 xk_bind_key("impulse", XK_MOD_CTRL|XK_MOD_ALT, "i", 0)
 
 xkt_respawn = false
-xkt_cmd = "/bin/bash"
+xkt_cmd = "/bin/dash -l"
 
-xkt_color0 = 0xff000000 -- COLOR_BLACK -> X11 black
-xkt_color1 = 0xffdaa520 -- COLOR_RED -> X11 goldenrod
-xkt_color2 = 0xffffffff -- COLOR_GREEN -> X11 white
-xkt_color3 = 0xffcdcd00 -- COLOR_YELLOW -> X11 yellow3
-xkt_color4 = 0xff999999 -- COLOR_BLUE -> X11 grey60
-xkt_color5 = 0xffcdcd00 -- COLOR_MAGENTA -> X11 yellow3
-xkt_color6 = 0xffffff00 -- COLOR_CYAN -> X11 yellow
-xkt_color7 = 0xff00ff00 -- COLOR_LIGHT_GREY -> X11 green
-xkt_color8 = 0xff4d4d4d -- COLOR_DARK_GREY -> X11 grey30
-xkt_color9 = 0xffdaa520 -- COLOR_LIGHT_RED -> X11 goldenrod
-xkt_color10 = 0xffffffff -- COLOR_LIGHT_GREEN -> X11 white
-xkt_color11 = 0xffffff00 -- COLOR_LIGHT_YELLOW -> X11 yellow
-xkt_color12 = 0xffe5e5e5 -- COLOR_LIGHT_BLUE -> X11 grey90
-xkt_color13 = 0xffffff00 -- COLOR_LIGHT_MAGENTA -> X11 yellow
-xkt_color14 = 0xff00ff00 -- COLOR_LIGHT_CYAN -> X11 green
-xkt_color15 = 0xff00ff00 -- COLOR_WHITE -> X11 green
-
-xkt_fgcolor = 0xff00cd00
-xkt_bgcolor = 0xbe000000
+xkt_color0 = 0x000000 -- COLOR_BLACK, 0%
+xkt_color1 = 0xcc9900 -- COLOR_RED, P3 80%
+xkt_color2 = 0xcccccc -- COLOR_GREEN, P4 80%
+xkt_color3 = 0xcc9900 -- COLOR_YELLOW, P3 80%
+xkt_color4 = 0xaaaaaa -- COLOR_BLUE, P4 67%
+xkt_color5 = 0xffbf00 -- COLOR_MAGENTA, P3 100%
+xkt_color6 = 0xaaaaaa -- COLOR_CYAN, P4 67%
+xkt_color7 = 0x00cc00 -- COLOR_LIGHT_GREY, P1 80%
+xkt_color8 = 0x555555 -- COLOR_DARK_GREY, P4 33%
+xkt_color9 = 0xffbf00 -- COLOR_LIGHT_RED, P3 100%
+xkt_color10 = 0xffffff -- COLOR_LIGHT_GREEN, P4 100%
+xkt_color11 = 0xffbf00 -- COLOR_LIGHT_YELLOW, P3 100%
+xkt_color12 = 0xffffff -- COLOR_LIGHT_BLUE, P4 100%
+xkt_color13 = 0xffbf00 -- COLOR_LIGHT_MAGENTA, P3 100%
+xkt_color14 = 0xffffff -- COLOR_LIGHT_CYAN, P4 100%
+xkt_color15 = 0x00ff00 -- COLOR_WHITE, P1 100%
 
 decorations["left"] = "aa55aa55"
 decorations["right"] = "aa55aa55"

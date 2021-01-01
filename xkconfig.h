@@ -7,8 +7,6 @@
 struct xkconfig {
     struct {
         uint32_t colors[16];
-        uint32_t fgcolor;
-        uint32_t bgcolor;
 
         int cell_width;
         int cell_height;

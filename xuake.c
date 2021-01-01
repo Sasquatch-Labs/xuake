@@ -369,7 +369,7 @@ main(int argc, char *argv[])
         asprintf(&server.conf.impulse_file, "%s/.xuake/impulse.lua", getenv("HOME"));
 
     init_ft();
-    memcpy(server.conf.xkt.colors, xkterm_get_colors(), 18*sizeof(uint32_t));
+    memcpy(server.conf.xkt.colors, xkterm_get_colors(), 16*sizeof(uint32_t));
     wl_list_init(&server.keybindings);
 
     init_lua(&server);

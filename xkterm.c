@@ -129,7 +129,6 @@ process_keyboard_repeats(void)
 static void
 redraw(void *data, struct wl_callback *callback, uint32_t time)
 {
-    uint32_t color = xkt.conf->xkt.bgcolor;
     unsigned char c;
     int i;
     GLenum e;
@@ -645,7 +644,7 @@ main(int argc, char **argv)
             conffile_name = NULL;
 
     init_ft();
-    memcpy(xkt.conf->xkt.colors, xkterm_get_colors(), 18*sizeof(uint32_t));
+    memcpy(xkt.conf->xkt.colors, xkterm_get_colors(), 16*sizeof(uint32_t));
     if (conffile_name) {
         init_lua(NULL);
         xklua_load_config(xkt.conf, conffile_name);
