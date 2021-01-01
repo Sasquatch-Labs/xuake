@@ -23,7 +23,6 @@ CFLAGS=-ggdb -Werror -I. \
     $(shell pkg-config --cflags libpng) \
     $(shell pkg-config --cflags zlib) \
     $(shell pkg-config --cflags xkbcommon) \
-    $(shell pkg-config --cflags libtsm) \
     $(shell pkg-config --cflags xcb) \
     $(shell pkg-config --cflags lua)
 
@@ -35,7 +34,6 @@ XUAKE_LIBS=\
     $(shell pkg-config --libs libpng) \
     $(shell pkg-config --libs zlib) \
     $(shell pkg-config --libs xkbcommon) \
-    $(shell pkg-config --libs libtsm) \
     $(shell pkg-config --libs xcb) \
     $(shell pkg-config --libs lua)
 

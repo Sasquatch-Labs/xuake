@@ -1,10 +1,9 @@
 #ifndef __XKDEFS_H
 #define __XKDEFS_H
 
-#define XUAKE_VERSION "0.2.0"
-#define XUAKE_WORKSPACES 4
-#define XUAKE_RESIZE_TARGET 4
+#define XUAKE_VERSION "0.2.2"
 
+#define XUAKE_WORKSPACES 4
 #define XK_MAX_IMPULSE 99
 
 #define XK_KBR_DELAY 500

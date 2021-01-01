@@ -23,6 +23,9 @@ xk_bind_key("impulse", XK_MOD_CTRL|XK_MOD_ALT, "i", 0)
 xkt_respawn = false
 xkt_cmd = "/bin/dash -l"
 
+-- This is my personal color scheme.  It's based on colors from the
+-- P1, P3 and P4 phosphors, which are the colors that dominated the
+-- computer displays of my youth.
 xkt_color0 = 0x000000 -- COLOR_BLACK, 0%
 xkt_color1 = 0xcc9900 -- COLOR_RED, P3 80%
 xkt_color2 = 0xcccccc -- COLOR_GREEN, P4 80%

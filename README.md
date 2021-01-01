@@ -30,15 +30,14 @@ install are:
 
 > `sudo make install`
 
-By default it just drops two executables (`xuake` and `xkterm`) into
-`/usr/local/bin`.
+By default it drops three executables (`xuake`, `xkterm` and `xk`) into
+`/usr/local/bin` and it adds a terminfo entry for `xkterm`.
 
 You'll need to have these packages installed:
 * wlroots (== 0.11.0)
 * Wayland (>= 1.18)
 * OpenGL/EGL/GLESv2
 * Lua (>= 5.4.0)
-* libtsm
 * zlib
 * xcb
 * xkbcommon
@@ -130,6 +129,7 @@ support).
 - Separate resize command from warp (leaves window at its location)
 - Bug: Full screen on multiple outputs snapped all windows to 0,0
 - xdg positioner handling
+- Replace libtsm with internal terminal emulator
 
 ### Completed 0.2.0:
 
