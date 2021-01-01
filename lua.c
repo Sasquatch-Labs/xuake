@@ -409,6 +409,7 @@ init_lua(struct xuake_server *s)
         "bg=0xbe000000 }\n"
         "gl_clear_color = { r=0.3, g=0.3, b=0.3 }\n"
         "xk_batteries=1\n"
+        "xkt_fg=7\n" "xkt_bg=0\n" "xkt_bgalpha=191\n"
 
         "XKEV_NEW_SURFACE = %d\n" "XKEV_MAP_SURFACE = %d\n"
         "XKEV_UNMAP_SURFACE = %d\n" "XKEV_FOCUS_SURFACE = %d\n"
@@ -627,6 +628,24 @@ xklua_load_config(struct xkconfig *conf, char *filename)
             conf->xkt.colors[i] = tmpi;
         lua_pop(L, 1);
     }
+
+    lua_getglobal(L, "xkt_fg");
+    tmpi = (uint32_t)(lua_tointegerx(L, 1, &convscs) & 0xff);
+    if (convscs)
+        conf->xkt.fg = tmpi;
+    lua_pop(L, 1);
+
+    lua_getglobal(L, "xkt_bg");
+    tmpi = (uint32_t)(lua_tointegerx(L, 1, &convscs) & 0xff);
+    if (convscs)
+        conf->xkt.bg = tmpi;
+    lua_pop(L, 1);
+
+    lua_getglobal(L, "xkt_bgalpha");
+    tmpi = (uint32_t)(lua_tointegerx(L, 1, &convscs) & 0xff);
+    if (convscs)
+        conf->xkt.bgalpha = tmpi;
+    lua_pop(L, 1);
 
     conf->gl_clear_color.r = 0.3;
     conf->gl_clear_color.g = 0.3;

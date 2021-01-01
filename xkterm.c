@@ -652,7 +652,7 @@ main(int argc, char **argv)
         ft_load_default_fonts();
     }
     ft_set_cell_size(xkt.conf);
-    xkterm_set_colors(xkt.conf->xkt.colors);
+    xkterm_set_colors(xkt.conf);
     if (xkt.conf->xkt.cell_width == 0 || xkt.conf->xkt.cell_height == 0) {
         printf("Could not load any fonts!\n");
         exit(111);

@@ -98,7 +98,7 @@ void xkterm_clear_dirty(struct xkterm *t, int width, int height, unsigned char *
 void xkterm_clear_full(struct xkterm *t, int width, int height, unsigned char *data);
 void xkterm_use_full_clear(void);
 void xkterm_render(struct xkterm *t, int width, int height, unsigned char *data);
-void xkterm_set_colors(uint32_t *new_colors);
+void xkterm_set_colors(struct xkconfig *conf);
 uint32_t *xkterm_get_colors(void);
 
 void init_batteries(int b, int w);

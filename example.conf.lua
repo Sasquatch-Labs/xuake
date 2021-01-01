@@ -50,36 +50,34 @@ xkt_cmd = "/bin/bash"
 -- them to be both the same, just use xkt_cmd.
 -- xuake_cmd = "/bin/bash"
 
--- Color scheme based on/inspired by White/Green/Amber phosphors
--- When I was a kid in the 80s, My first computer had a 4-color
--- amber monitor, we had a black & white TV and my school had
--- Apple IIs with green phosphor monitors.  This is mostly nostalgia
--- kick, but I think it may be easier on my eyes.
+-- Colors are 24-bit RGB 8bpc Values close to 00 willbe faint.  The hex digits are
+-- the same as for WWW colors, google for a hex color translator.
+-- Eg, https://en.wikipedia.org/wiki/X11_color_names has a good list.
+-- These are the default colors:
+-- xkt_color0 = 0x000000 -- COLOR_BLACK
+-- xkt_color1 = 0xcc0000 -- COLOR_RED
+-- xkt_color2 = 0x00cc00 -- COLOR_GREEN
+-- xkt_color3 = 0xcccc00 -- COLOR_YELLOW
+-- xkt_color4 = 0x0000cc -- COLOR_BLUE
+-- xkt_color5 = 0xcc00cc -- COLOR_MAGENTA
+-- xkt_color6 = 0x00cccc -- COLOR_CYAN
+-- xkt_color7 = 0xcccccc -- COLOR_LIGHT_GREY
+-- xkt_color8 = 0x555555 -- COLOR_DARK_GREY
+-- xkt_color9 = 0xff0000 -- COLOR_LIGHT_RED
+-- xkt_color10 = 0x00ff00 -- COLOR_LIGHT_GREEN
+-- xkt_color11 = 0xffff00 -- COLOR_LIGHT_YELLOW
+-- xkt_color12 = 0x0000ff -- COLOR_LIGHT_BLUE
+-- xkt_color13 = 0xff00ff -- COLOR_LIGHT_MAGENTA
+-- xkt_color14 = 0x00ffff -- COLOR_LIGHT_CYAN
+-- xkt_color15 = 0xffffff -- COLOR_WHITE
 
--- Colors are 32-bit ARGB 8bpc -or- first two hex digits are your alpha
--- channel, use ff if you don't want see-through.  Values close to 00 will
--- be faint.  The last 6 hex digits are the same as for WWW colors, google
--- for a hex color translator.  Eg, https://en.wikipedia.org/wiki/X11_color_names
--- has a good list.
-xkt_color0 = 0xff000000 -- COLOR_BLACK -> X11 black
-xkt_color1 = 0xffdaa520 -- COLOR_RED -> X11 goldenrod
-xkt_color2 = 0xffffffff -- COLOR_GREEN -> X11 white
-xkt_color3 = 0xffcdcd00 -- COLOR_YELLOW -> X11 yellow3
-xkt_color4 = 0xff999999 -- COLOR_BLUE -> X11 grey60
-xkt_color5 = 0xffcdcd00 -- COLOR_MAGENTA -> X11 yellow3
-xkt_color6 = 0xffffff00 -- COLOR_CYAN -> X11 yellow
-xkt_color7 = 0xff00ff00 -- COLOR_LIGHT_GREY -> X11 green
-xkt_color8 = 0xff4d4d4d -- COLOR_DARK_GREY -> X11 grey30
-xkt_color9 = 0xffdaa520 -- COLOR_LIGHT_RED -> X11 goldenrod
-xkt_color10 = 0xffffffff -- COLOR_LIGHT_GREEN -> X11 white
-xkt_color11 = 0xffffff00 -- COLOR_LIGHT_YELLOW -> X11 yellow
-xkt_color12 = 0xffe5e5e5 -- COLOR_LIGHT_BLUE -> X11 grey90
-xkt_color13 = 0xffffff00 -- COLOR_LIGHT_MAGENTA -> X11 yellow
-xkt_color14 = 0xff00ff00 -- COLOR_LIGHT_CYAN -> X11 green
-xkt_color15 = 0xff00ff00 -- COLOR_WHITE -> X11 green
-
-xkt_fgcolor = 0xff00cd00
-xkt_bgcolor = 0xbe000000
+-- Background alpha is controlled with xkt_bgalpha, value is from 0-255, both
+-- decimal and hexadecimal notation accepted.
+-- xkt_bgalpha = 255
+-- These are the default foreground and background colors, they should be 0-15,
+-- and correspond to the colors above.  These are the default values:
+-- xkt_bg = 0
+-- xkt_fg = 7
 
 -- These are bit maps.  They are 8x4 pixels for left, right & mid8.  4x4 for mid4,
 -- 2x4 for mid2 and 1x2 for mid1.  Decorations are only drawn along the top of

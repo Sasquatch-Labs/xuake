@@ -4,7 +4,7 @@
 -- works on Debian, YMMV.
 xk_load_font("/usr/share/consolefonts/Uni2-Terminus20x10.psf.gz", false)
 xk_load_font("/usr/share/consolefonts/Uni2-TerminusBold20x10.psf.gz", true)
-                                                                         
+
 -- Dev keybindings.  Use C-F1 for drop terminal, and use dwm keys which don't
 -- conflict with my day-to-day-defaults (see example.conf.lua)
 xk_bind_key("toggle_xkt", XK_MOD_CTRL, XK_F1)
@@ -39,6 +39,10 @@ xkt_color12 = 0xffffff -- COLOR_LIGHT_BLUE, P4 100%
 xkt_color13 = 0xffbf00 -- COLOR_LIGHT_MAGENTA, P3 100%
 xkt_color14 = 0xffffff -- COLOR_LIGHT_CYAN, P4 100%
 xkt_color15 = 0x00ff00 -- COLOR_WHITE, P1 100%
+
+-- xkt_bgalpha = 255
+-- xkt_bg = 0
+-- xkt_fg = 7
 
 decorations["left"] = "aa55aa55"
 decorations["right"] = "aa55aa55"

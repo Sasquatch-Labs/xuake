@@ -31,39 +31,43 @@ enum xkt_vte_state {
 };
 
 static uint32_t colors[16] = {
-    0x000000, // COLOR_BLACK, X11 black
-    0xcd0000, // COLOR_RED, X11 red3
-    0x00cd00, // COLOR_GREEN, X11 green3
-    0xcdcd00, // COLOR_YELLOW, X11 yellow3
-    0x0000cd, // COLOR_BLUE, X11 blue3
-    0xcd00cd, // COLOR_MAGENTA, X11 magenta3
-    0x00cdcd, // COLOR_CYAN, X11 cyan3
-    0xe5e5e5, // COLOR_LIGHT_GREY, X11 grey90
-    0x4d4d4d, // COLOR_DARK_GREY, X11 grey30
-    0xff0000, // COLOR_LIGHT_RED, X11 red
-    0x00ff00, // COLOR_LIGHT_GREEN, X11 green
-    0xffff00, // COLOR_LIGHT_YELLOW, X11 yellow
-    0x0000ff, // COLOR_LIGHT_BLUE, X11 blue
-    0xff00ff, // COLOR_LIGHT_MAGENTA, X11 magenta
-    0x00ffff, // COLOR_LIGHT_CYAN, X11 cyan
-    0xffffff, // COLOR_WHITE, X11 white
+    0x000000, // COLOR_BLACK
+    0xcc0000, // COLOR_RED
+    0x00cc00, // COLOR_GREEN
+    0xcccc00, // COLOR_YELLOW
+    0x0000cc, // COLOR_BLUE
+    0xcc00cc, // COLOR_MAGENTA
+    0x00cccc, // COLOR_CYAN
+    0xcccccc, // COLOR_LIGHT_GREY
+    0x555555, // COLOR_DARK_GREY
+    0xff0000, // COLOR_LIGHT_RED
+    0x00ff00, // COLOR_LIGHT_GREEN
+    0xffff00, // COLOR_LIGHT_YELLOW
+    0x0000ff, // COLOR_LIGHT_BLUE
+    0xff00ff, // COLOR_LIGHT_MAGENTA
+    0x00ffff, // COLOR_LIGHT_CYAN
+    0xffffff, // COLOR_WHITE
 };
 
 static uint8_t fgalpha = 0xff;
-static uint8_t bgalpha = 0xbf;
+static uint8_t bgalpha; // Default set in lua.c:init_lua()
 
-int fgcolor = XKT_LIGHT_GREY;
-int bgcolor = XKT_BLACK;
+int fgcolor; // Default set in lua.c:init_lua()
+int bgcolor; // Default set in lua.c:init_lua()
 
 //void (* xkterm_clear)(struct xkterm *t, int w, int h, unsigned char *data) = xkterm_clear_dirty;
 void (* xkterm_clear)(struct xkterm *t, int w, int h, unsigned char *data) = xkterm_clear_full;
 
 void
-xkterm_set_colors(uint32_t *new_colors)
+xkterm_set_colors(struct xkconfig *conf)
 {
     int i;
     for (i = 0; i < 16; i++)
-        colors[i] = new_colors[i];
+        colors[i] = conf->xkt.colors[i];
+
+    fgcolor = conf->xkt.fg;
+    bgcolor = conf->xkt.bg;
+    bgalpha = conf->xkt.bgalpha;
 }
 
 uint32_t *

@@ -377,7 +377,7 @@ main(int argc, char *argv[])
     ft_load_default_fonts();
 
     ft_set_cell_size(&server.conf);
-    xkterm_set_colors(server.conf.xkt.colors);
+    xkterm_set_colors(&server.conf);
     if (server.conf.xkt.cell_width == 0 || server.conf.xkt.cell_height == 0) {
         printf("Could not load any fonts!\n");
         exit(111);
