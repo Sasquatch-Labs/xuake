@@ -30,7 +30,17 @@
 enum {
     XKT_ATTR_BOLD = 1,
     XKT_ATTR_BLINK = 2,
-    XKT_ATTR_RVID = 4
+    XKT_ATTR_RVID = 4,
+    /* I kinda hate the XKT_ATTR_PREMOV code.  This is to cover for some
+     * questionable behavior on vim's part when running within tmux.
+     * When vim clears the screen for the area after the displayed files
+     * (The lines that start with ~), vim jumps to the beginning of the line
+     * with ^[[H and then prints '~' followed by enough spaces to fill out
+     * the line.  Which means it trips a line wrap with the last space unless
+     * the final column is handled specially.  I don't know why ^[[K isn't
+     * good enough.
+     */
+    XKT_ATTR_PREMOV = 128
 };
 
 struct xkt_cell {

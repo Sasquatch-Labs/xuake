@@ -622,6 +622,9 @@ xkt_vte_kill_line(struct xkterm *t, int line, int bot)
 void
 xkt_vte_movecursor_nowrap(struct xkterm *t, int x, int y)
 {
+    if (t->vte.rows[t->vte.cy][t->vte.cx].attr & XKT_ATTR_PREMOV)
+        t->vte.rows[t->vte.cy][t->vte.cx].attr ^= XKT_ATTR_PREMOV;
+
     if (x < 0)
         x = 0;
     else if (x >= t->cellw)
@@ -639,6 +642,9 @@ xkt_vte_movecursor_nowrap(struct xkterm *t, int x, int y)
 void
 xkt_vte_movecursor(struct xkterm *t, int x, int y)
 {
+    if (t->vte.rows[t->vte.cy][t->vte.cx].attr & XKT_ATTR_PREMOV)
+        t->vte.rows[t->vte.cy][t->vte.cx].attr ^= XKT_ATTR_PREMOV;
+
     if (x < 0)
         x = 0;
     else if (t->vte.wrap && x == t->cellw && x == t->vte.cx + 1) {
@@ -1044,6 +1050,8 @@ xkt_vte_in_normal(struct xkterm *t, uint32_t ucs4)
         break;
     default:
         if (ucs4 >= ' ') {
+            if (t->vte.rows[t->vte.cy][t->vte.cx].attr & XKT_ATTR_PREMOV)
+                xkt_vte_movecursor(t, t->vte.cx+1, t->vte.cy);
             // XXX: Check for double width cells!
             if (t->vte.cx < t->cellw) {
                 t->vte.rows[t->vte.cy][t->vte.cx].rune = ucs4;
@@ -1051,7 +1059,10 @@ xkt_vte_in_normal(struct xkterm *t, uint32_t ucs4)
                 t->vte.rows[t->vte.cy][t->vte.cx].bgcolor = t->vte.bgcolor;
                 t->vte.rows[t->vte.cy][t->vte.cx].attr = t->vte.attr;
             }
-            xkt_vte_movecursor(t, t->vte.cx+1, t->vte.cy);
+            if (t->vte.cx == t->cellw - 1)
+                t->vte.rows[t->vte.cy][t->vte.cx].attr |= XKT_ATTR_PREMOV;
+            else
+                xkt_vte_movecursor(t, t->vte.cx+1, t->vte.cy);
         }
     }
 }
