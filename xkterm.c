@@ -510,7 +510,7 @@ init_xkterm(void)
 static void
 create_window()
 {
-    GLuint stat;
+    GLint stat;
 
     //printf("create_window start: [%d, %d]\n", width, height);
     egl_window = wl_egl_window_create(surface, width, height);

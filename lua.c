@@ -569,6 +569,52 @@ xklua_run_callback(struct wl_list *cb_list, const char *atypes, ...)
 }
 #endif // XKTERM_BUILD
 
+static void
+get_clear_color(double *comp, char *key)
+{
+    lua_pushstring(L, key);
+    lua_gettable(L, -2);
+    if (lua_isnumber(L, -1)) {
+        *comp = lua_tonumber(L, -1);
+        if (*comp > 1.0)
+            *comp = 1.0;
+        else if (*comp < 0.0)
+            *comp = 0.0;
+    }
+    lua_pop(L, 1);
+}
+
+static void
+get_decoration_string(char *str, char *key, char *defstr, size_t sz)
+{
+    const char *dtmp;
+    lua_pushstring(L, key);
+    lua_gettable(L, -2);
+    if (lua_isstring(L, -1)) {
+        dtmp = lua_tostring(L, -1);
+        if (strlen(dtmp) == sz)
+            memcpy(str, dtmp, sz*sizeof(char));
+        else
+            memcpy(str, defstr, sz*sizeof(char));
+    }
+    str[sz] = 0;
+    lua_pop(L, 1);
+}
+
+static void
+get_decoration_color(uint32_t *color, char *key)
+{
+    uint32_t tmpi;
+    int convscs;
+
+    lua_pushstring(L, key);
+    lua_gettable(L, -2);
+    tmpi = (uint32_t)(lua_tointegerx(L, -1, &convscs) & 0xffffffff);
+    if (convscs)
+        *color = tmpi;
+    lua_pop(L, 1);
+}
+
 void
 xklua_load_config(struct xkconfig *conf, char *filename)
 {
@@ -651,20 +697,6 @@ xklua_load_config(struct xkconfig *conf, char *filename)
     conf->gl_clear_color.g = 0.3;
     conf->gl_clear_color.b = 0.3;
 
-    void
-    get_clear_color(double *comp, char *key)
-    {
-        lua_pushstring(L, key);
-        lua_gettable(L, -2);
-        if (lua_isnumber(L, -1)) {
-            *comp = lua_tonumber(L, -1);
-            if (*comp > 1.0)
-                *comp = 1.0;
-            else if (*comp < 0.0)
-                *comp = 0.0;
-        }
-        lua_pop(L, 1);
-    }
     lua_getglobal(L, "gl_clear_color");
     if (lua_istable(L, -1)) {
         get_clear_color(&conf->gl_clear_color.r, "r");
@@ -673,35 +705,6 @@ xklua_load_config(struct xkconfig *conf, char *filename)
     }
     lua_pop(L, 1);
 
-    void
-    get_decoration_string(char *str, char *key, char *defstr, size_t sz)
-    {
-        const char *dtmp;
-        lua_pushstring(L, key);
-        lua_gettable(L, -2);
-        if (lua_isstring(L, -1)) {
-            dtmp = lua_tostring(L, -1);
-            if (strlen(dtmp) == sz)
-                memcpy(str, dtmp, sz*sizeof(char));
-            else
-                memcpy(str, defstr, sz*sizeof(char));
-        }
-        str[sz] = 0;
-        lua_pop(L, 1);
-    }
-    void
-    get_decoration_color(uint32_t *color, char *key)
-    {
-        uint32_t tmpi;
-        int convscs;
-
-        lua_pushstring(L, key);
-        lua_gettable(L, -2);
-        tmpi = (uint32_t)(lua_tointegerx(L, -1, &convscs) & 0xffffffff);
-        if (convscs)
-            *color = tmpi;
-        lua_pop(L, 1);
-    }
     lua_getglobal(L, "decorations");
     if (lua_istable(L, -1)) {
         get_decoration_string(conf->decorations.left, "left", XKL_LEFT_DEFAULT, 8);
